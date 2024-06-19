@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+tracy
+shaders/compile.sh
+img/bassirou256.jpg
+.vscode
+*.tmp
+bassicraft
