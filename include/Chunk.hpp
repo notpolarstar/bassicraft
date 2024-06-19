@@ -8,6 +8,7 @@
 
 #include "Cube.hpp"
 #include "Vertex.hpp"
+#include "FastNoiseLite.hpp"
 
 class Chunk
 {
@@ -24,6 +25,8 @@ public:
     std::vector<Vertex> vertices{};
     std::vector<uint32_t> indices{};
 
+    bool should_be_deleted = false;
+
     // void create_vertex_buffer();
     // void create_index_buffer();
 
@@ -31,6 +34,6 @@ public:
     // void create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory);
     // void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
 
-    Chunk(glm::vec2 pos);
+    Chunk(glm::vec2 pos, FastNoiseLite& noise);
     ~Chunk();
 };

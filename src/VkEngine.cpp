@@ -398,6 +398,9 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
 
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame], 0, nullptr);
     for (auto& chunk : world) {
+        if (chunk.should_be_deleted) {
+            continue;
+        }
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &chunk.vk_vertex_buffer, offsets);
         vkCmdBindIndexBuffer(command_buffer, chunk.vk_index_buffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(chunk.indices.size()), 1, 0, 0, 0);
@@ -473,6 +476,18 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
         return;
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("Could not acquire swapchain image");
+    }
+
+    int p = 0;
+    for (auto& chunk : world) {
+        if (chunk.should_be_deleted && chunk.vk_vertex_buffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
+            vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
+            vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
+            vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+            world.erase(world.begin() + p);
+        }
+        p++;
     }
 
     update_uniform_buffer(current_frame, player.camera);

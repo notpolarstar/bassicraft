@@ -9,13 +9,15 @@
 #include "Cube.hpp"
 #include "Player.hpp"
 #include "Chunk.hpp"
+#include "FastNoiseLite.hpp"
 
 class Bassicraft
 {
 private:
     VkEngine engine;
     Player player;
-
+    
+    FastNoiseLite noise;
     int render_distance = 5;
 
     std::vector<Chunk> world;

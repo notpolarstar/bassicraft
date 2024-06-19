@@ -14,9 +14,13 @@ Bassicraft::Bassicraft(/* args */)
 {
     srand(time(NULL));
 
+    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    noise.SetSeed(rand());
+    noise.SetFrequency(0.0f);
+
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
-            world.push_back(Chunk(glm::vec2(x, z)));
+            world.push_back(Chunk(glm::vec2(x, z), noise));
         }
     }
 
@@ -111,18 +115,10 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
 void Bassicraft::unload_load_new_chunks()
 {
     glm::vec2 player_chunk = glm::vec2((int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
-    int p = 0;
-    bool is_idle = false;
     for (auto& chunk : world) {
         if (chunk.pos.x < player_chunk.x - render_distance || chunk.pos.x > player_chunk.x + render_distance || chunk.pos.y < player_chunk.y - render_distance || chunk.pos.y > player_chunk.y + render_distance) {
-            if (!is_idle) {
-                engine.wait_idle();
-                is_idle = true;
-            }
-            engine.free_buffers_chunk(chunk);
-            world.erase(world.begin() + p);
+            chunk.should_be_deleted = true;
         }
-        p++;
     }
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
@@ -135,7 +131,7 @@ void Bassicraft::unload_load_new_chunks()
             }
             if (!found) {
                 int siz = world.size();
-                world.push_back(Chunk(glm::vec2(player_chunk.x + x, player_chunk.y + z)));
+                world.push_back(Chunk(glm::vec2(player_chunk.x + x, player_chunk.y + z), noise));
                 set_blocks_in_vertex_buffer(world[siz]);
                 engine.create_vertex_buffer_chunk(world[siz]);
                 engine.create_index_buffer_chunk(world[siz]);

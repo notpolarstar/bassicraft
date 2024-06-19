@@ -4,15 +4,9 @@
 
 #include "VkEngine.hpp"
 #include "Chunk.hpp"
-#include "FastNoiseLite.hpp"
 
-Chunk::Chunk(glm::vec2 pos) : pos(pos)
+Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise) : pos(pos)
 {
-    FastNoiseLite noise;
-    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-    noise.SetSeed(1337);
-    noise.SetFrequency(0.01);
-
     for (int x = 0; x < 16; x++)
     {
         for (int z = 0; z < 16; z++)
