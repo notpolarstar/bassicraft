@@ -16,7 +16,7 @@ Bassicraft::Bassicraft(/* args */)
 
     noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     noise.SetSeed(rand());
-    noise.SetFrequency(0.0f);
+    noise.SetFrequency(0.01f);
 
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
