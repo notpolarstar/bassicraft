@@ -148,15 +148,14 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glm::vec4 pos = get_cube_pointed_at();
-        std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
-        if (pos.w != -42069) {
-            remove_cube(world[0], pos);
+        if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type != 0) {
+            remove_cube(world[pos.w], pos);
+            engine.recreate_buffers_chunk(world[pos.w]);
         }
     }
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
         glm::vec4 pos = get_cube_pointed_at();
-        std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
-        if (pos.w != -42069) {
+        if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y - 1][pos.z].type == 0) {
             Cube cube{};
             cube.type = rand() % 256;
             cube.pos = glm::ivec3(pos.x, pos.y - 1, pos.z);
@@ -176,57 +175,8 @@ void Bassicraft::add_cube(Chunk& chunk, Cube& cube)
 void Bassicraft::remove_cube(Chunk& chunk, glm::ivec3 pos)
 {
     chunk.blocks[pos.x][pos.y][pos.z] = Cube{glm::ivec3(0, 0, 0), 0};
-    engine.remove_cube_from_vertices(pos, chunk.pos);
+    engine.remove_cube_from_vertices(pos, chunk.pos, chunk);
 }
-
-// glm::vec4 Bassicraft::get_cube_pointed_at()
-// {
-//     //Return vec (16, 100, 16) position in the chunk
-//     //Return -42069 if no cube is pointed at
-
-//     glm::vec3 ray = player.camera.front;
-//     glm::vec3 start = player.camera.pos;
-//     glm::vec3 end = start + ray * 10.0f;
-//     int index = 0;
-
-//     for (auto& chunk : world) {
-//         for (int x = 0; x < 16; x++) {
-//             for (int y = 0; y < 100; y++) {
-//                 for (int z = 0; z < 16; z++) {
-//                     if (chunk.blocks[x][y][z].type != 0) {
-//                         glm::vec3 cube_pos = glm::vec3(x, y, z);
-//                         glm::vec3 min = cube_pos + glm::vec3(chunk.pos.x * 16, 0, chunk.pos.y * 16);
-//                         glm::vec3 max = min + glm::vec3(1, 1, 1);
-//                         glm::vec3 dirfrac;
-//                         dirfrac.x = 1.0f / ray.x;
-//                         dirfrac.y = 1.0f / ray.y;
-//                         dirfrac.z = 1.0f / ray.z;
-//                         float t1 = (min.x - start.x) * dirfrac.x;
-//                         float t2 = (max.x - start.x) * dirfrac.x;
-//                         float t3 = (min.y - start.y) * dirfrac.y;
-//                         float t4 = (max.y - start.y) * dirfrac.y;
-//                         float t5 = (min.z - start.z) * dirfrac.z;
-//                         float t6 = (max.z - start.z) * dirfrac.z;
-//                         float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
-//                         float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
-//                         if (tmax < 0) {
-//                             continue;
-//                         }
-//                         if (tmin > tmax) {
-//                             continue;
-//                         }
-//                         if (tmin < 0) {
-//                             return glm::vec4(cube_pos, index);
-//                         }
-//                         return glm::vec4(cube_pos, index);
-//                     }
-//                 }
-//             }
-//         }
-//         index++;
-//     }
-//     return glm::vec4(0, 0, 0, -42069);
-// }
 
 int regular_modulo(int a, int b)
 {

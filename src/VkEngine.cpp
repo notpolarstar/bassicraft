@@ -908,16 +908,16 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     }
 }
 
-void VkEngine::remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos)
+void VkEngine::remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos, Chunk& chunk)
 {
-    for (int i = 0; i < vertices.size(); i += 24) {
+    for (int i = 0; i < chunk.vertices.size(); i += 24) {
         int indice = i / 24;
-        if (vertices[i].pos.x == pos.x && vertices[i].pos.y == pos.y && vertices[i].pos.z == pos.z) {
-            vertices.erase(vertices.begin() + i, vertices.begin() + i + 24);
-            indices.erase(indices.begin() + indice * 36, indices.begin() + indice * 36 + 36);
-            for (int j = 0; j < indices.size(); j++) {
-                if (indices[j] > indice * 24) {
-                    indices[j] -= 24;
+        if (chunk.vertices[i].pos.x == pos.x + chunk_pos.x * 16 && chunk.vertices[i].pos.y == pos.y && chunk.vertices[i].pos.z == pos.z + chunk_pos.y * 16) {
+            chunk.vertices.erase(chunk.vertices.begin() + i, chunk.vertices.begin() + i + 24);
+            chunk.indices.erase(chunk.indices.begin() + indice * 36, chunk.indices.begin() + indice * 36 + 36);
+            for (int j = 0; j < chunk.indices.size(); j++) {
+                if (chunk.indices[j] > indice * 24) {
+                    chunk.indices[j] -= 24;
                 }
             }
             return;
