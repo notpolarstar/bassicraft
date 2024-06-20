@@ -50,6 +50,10 @@ Bassicraft::Bassicraft(/* args */)
         engine.create_index_buffer_chunk(chunk);
     }
 
+    glfwSetWindowUserPointer(engine.window, this);
+    glfwSetMouseButtonCallback(engine.window, [](GLFWwindow* window, int button, int action, int mods) {
+        static_cast<Bassicraft*>(glfwGetWindowUserPointer(window))->mouse_buttons(window, button, action, mods);
+    });
     while (!glfwWindowShouldClose(engine.window)) {
         glfwPollEvents();
         int width, height;
@@ -140,6 +144,29 @@ void Bassicraft::unload_load_new_chunks()
     }
 }
 
+void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+        glm::vec4 pos = get_cube_pointed_at();
+        std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
+        if (pos.w != -42069) {
+            remove_cube(world[0], pos);
+        }
+    }
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+        glm::vec4 pos = get_cube_pointed_at();
+        std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
+        if (pos.w != -42069) {
+            Cube cube{};
+            cube.type = rand() % 256;
+            cube.pos = glm::ivec3(pos.x, pos.y - 1, pos.z);
+            add_cube(world[pos.w], cube);
+            engine.recreate_buffers_chunk(world[pos.w]);
+        }
+    }
+
+}
+
 void Bassicraft::add_cube(Chunk& chunk, Cube& cube)
 {
     chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z] = cube;
@@ -152,18 +179,93 @@ void Bassicraft::remove_cube(Chunk& chunk, glm::ivec3 pos)
     engine.remove_cube_from_vertices(pos, chunk.pos);
 }
 
-// glm::ivec3 Bassicraft::get_cube_pointed_at()
+// glm::vec4 Bassicraft::get_cube_pointed_at()
 // {
-//     glm::vec3 pos = player.camera.pos;
-//     glm::vec3 dir = player.camera.front;
-//     for (int i = 0; i < 10; i++) {
-//         pos += dir * 0.1f;
-//         if (world[0].blocks[(int)pos.x][(int)pos.y][(int)pos.z].type != 0) {
-//             return glm::ivec3((int)pos.x, (int)pos.y, (int)pos.z);
+//     //Return vec (16, 100, 16) position in the chunk
+//     //Return -42069 if no cube is pointed at
+
+//     glm::vec3 ray = player.camera.front;
+//     glm::vec3 start = player.camera.pos;
+//     glm::vec3 end = start + ray * 10.0f;
+//     int index = 0;
+
+//     for (auto& chunk : world) {
+//         for (int x = 0; x < 16; x++) {
+//             for (int y = 0; y < 100; y++) {
+//                 for (int z = 0; z < 16; z++) {
+//                     if (chunk.blocks[x][y][z].type != 0) {
+//                         glm::vec3 cube_pos = glm::vec3(x, y, z);
+//                         glm::vec3 min = cube_pos + glm::vec3(chunk.pos.x * 16, 0, chunk.pos.y * 16);
+//                         glm::vec3 max = min + glm::vec3(1, 1, 1);
+//                         glm::vec3 dirfrac;
+//                         dirfrac.x = 1.0f / ray.x;
+//                         dirfrac.y = 1.0f / ray.y;
+//                         dirfrac.z = 1.0f / ray.z;
+//                         float t1 = (min.x - start.x) * dirfrac.x;
+//                         float t2 = (max.x - start.x) * dirfrac.x;
+//                         float t3 = (min.y - start.y) * dirfrac.y;
+//                         float t4 = (max.y - start.y) * dirfrac.y;
+//                         float t5 = (min.z - start.z) * dirfrac.z;
+//                         float t6 = (max.z - start.z) * dirfrac.z;
+//                         float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+//                         float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+//                         if (tmax < 0) {
+//                             continue;
+//                         }
+//                         if (tmin > tmax) {
+//                             continue;
+//                         }
+//                         if (tmin < 0) {
+//                             return glm::vec4(cube_pos, index);
+//                         }
+//                         return glm::vec4(cube_pos, index);
+//                     }
+//                 }
+//             }
 //         }
+//         index++;
 //     }
-//     return glm::ivec3(0, 0, 0);
+//     return glm::vec4(0, 0, 0, -42069);
 // }
+
+int regular_modulo(int a, int b)
+{
+    return (a % b + b) % b;
+}
+
+glm::vec4 Bassicraft::get_cube_pointed_at()
+{
+    //Return vec (16, 100, 16) position in the chunk
+    //Return -42069 if no cube is pointed at
+
+    glm::vec3 ray = player.camera.front;
+    glm::vec3 start = player.camera.pos;
+    glm::vec3 end = start + ray * 10.0f;
+
+    for (float t = 0.0f; t < 10.0f; t += 0.01f) {
+        glm::vec3 position = start + ray * t;
+        glm::ivec3 block_position = glm::floor(position);
+        glm::vec2 chunk_pos = glm::vec2(block_position.x / 16, block_position.z / 16);
+        if (block_position.x < 0) {
+            chunk_pos.x -= 1;
+        }
+        if (block_position.z < 0) {
+            chunk_pos.y -= 1;
+        }
+        glm::ivec3 block_position_in_chunk = glm::ivec3(regular_modulo(block_position.x, 16), block_position.y, regular_modulo(block_position.z, 16));
+
+        int index = 0;
+        for (auto& chunk : world) {
+            if (chunk.pos == chunk_pos) {
+                if (chunk.blocks[block_position_in_chunk.x][block_position_in_chunk.y][block_position_in_chunk.z].type != 0) {
+                    return glm::vec4(block_position_in_chunk, index);
+                }
+            }
+            index++;
+        }
+    }
+    return glm::vec4(0, 0, 0, -42069);
+}
 
 Bassicraft::~Bassicraft()
 {

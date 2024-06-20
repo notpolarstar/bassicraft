@@ -1210,6 +1210,14 @@ void VkEngine::free_buffers_chunk(Chunk& chunk)
     vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
 }
 
+void VkEngine::recreate_buffers_chunk(Chunk& chunk)
+{
+    wait_idle();
+    free_buffers_chunk(chunk);
+    create_vertex_buffer_chunk(chunk);
+    create_index_buffer_chunk(chunk);
+}
+
 void VkEngine::wait_idle()
 {
     vkDeviceWaitIdle(device.device);

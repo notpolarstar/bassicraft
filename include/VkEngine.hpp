@@ -160,6 +160,7 @@ public:
 
     void create_vertex_buffer_chunk(Chunk& chunk);
     void create_index_buffer_chunk(Chunk& chunk);
+    void recreate_buffers_chunk(Chunk& chunk);
 
     VkEngine();
     ~VkEngine();
