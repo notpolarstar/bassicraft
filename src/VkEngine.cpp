@@ -469,21 +469,6 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
 {
     vkWaitForFences(device.device, 1, &vk_in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
 
-    if (current_frame == MAX_FRAMES_IN_FLIGHT) {
-        int p = 0;
-        for (auto& chunk : world) {
-            if (chunk.should_be_deleted && chunk.vk_vertex_buffer != VK_NULL_HANDLE) {
-                vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
-                vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
-                vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
-                vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
-                std::move(world.begin() + p + 1, world.end(), world.begin() + p);
-                world.pop_back();
-            }
-            p++;
-        }
-    }
-
     uint32_t image_index;
     VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX, vk_image_available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
 
@@ -544,6 +529,21 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
     }
 
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    if (current_frame == 0) {
+        int p = 0;
+        for (auto& chunk : world) {
+            if (chunk.should_be_deleted) {
+                vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
+                vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
+                vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
+                vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+                std::move(world.begin() + p + 1, world.end(), world.begin() + p);
+                world.pop_back();
+            }
+            p++;
+        }
+    }
 }
 
 uint32_t VkEngine::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties)
