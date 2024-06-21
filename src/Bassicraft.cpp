@@ -121,6 +121,9 @@ void Bassicraft::unload_load_new_chunks()
     glm::vec2 player_chunk = glm::vec2((int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
     for (auto& chunk : world) {
         if (chunk.pos.x < player_chunk.x - render_distance || chunk.pos.x > player_chunk.x + render_distance || chunk.pos.y < player_chunk.y - render_distance || chunk.pos.y > player_chunk.y + render_distance) {
+            // engine.free_buffers_chunk(chunk);
+            // chunk = std::move(world.back());
+            // world.pop_back();
             chunk.should_be_deleted = true;
         }
     }

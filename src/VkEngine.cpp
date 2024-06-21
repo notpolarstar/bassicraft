@@ -481,6 +481,24 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
 
     update_uniform_buffer(current_frame, player.camera);
 
+    if (current_frame == 0) {
+        int p = 0;
+        for (auto& chunk : world) {
+            if (chunk.should_be_deleted && p < world.size() - 1) {
+                wait_idle();
+                vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
+                vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
+                vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
+                vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+                if (&chunk != &world.back()) {
+                    chunk = world.back();
+                }
+                world.pop_back();
+            }
+            p++;
+        }
+    }
+
     vkResetFences(device.device, 1, &vk_in_flight_fences[current_frame]);
 
     vkResetCommandBuffer(vk_command_buffers[current_frame], 0);
@@ -529,22 +547,6 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
     }
 
     current_frame = (current_frame + 1) % MAX_FRAMES_IN_FLIGHT;
-
-    if (current_frame == 0) {
-        int p = 0;
-        for (auto& chunk : world) {
-            if (chunk.should_be_deleted) {
-                wait_idle();
-                vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
-                vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
-                vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
-                vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
-                std::move(world.begin() + p + 1, world.end(), world.begin() + p);
-                world.pop_back();
-            }
-            p++;
-        }
-    }
 }
 
 uint32_t VkEngine::find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties)
@@ -1287,6 +1289,7 @@ void VkEngine::create_index_buffer_chunk(Chunk& chunk)
 
 void VkEngine::free_buffers_chunk(Chunk& chunk)
 {
+    wait_idle();
     vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
     vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
     vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
