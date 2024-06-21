@@ -37,3 +37,8 @@ VkShaderModule create_shader_module(const std::vector<char> &code, VkDevice devi
 
     return shader_module;
 }
+
+int regular_modulo(int a, int b)
+{
+    return (a % b + b) % b;
+}

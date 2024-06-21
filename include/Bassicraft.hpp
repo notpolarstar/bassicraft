@@ -26,7 +26,7 @@ public:
     ~Bassicraft();
 
     void add_cube(Chunk& chunk, Cube& cube);
-    void remove_cube(Chunk& chunk, glm::ivec3 pos);
+    void remove_cube(Chunk& chunk, glm::ivec3 pos, Cube& cube);
     void set_blocks_in_vertex_buffer(Chunk& chunk);
     void unload_load_new_chunks();
     void mouse_buttons(GLFWwindow* window, int button, int action, int mods);

@@ -154,7 +154,7 @@ public:
     void end_single_time_commands(VkCommandBuffer command_buffer);
     void recreate_vertex_array();
     void add_cube_to_vertices(Cube& cube, int up, int down, int left, int right, int front, int back, glm::vec2 chunk_pos, Chunk &chunk);
-    void remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos, Chunk& chunk);
+    void remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos, Chunk& chunk, Cube& cube);
     void remove_face(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, int i, int indice);
     void free_buffers_chunk(Chunk& chunk);
     void wait_idle();

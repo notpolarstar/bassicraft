@@ -5,5 +5,7 @@
 struct Cube
 {
     glm::ivec3 pos;
-    int type;
+    uint16_t type;
+    uint16_t faces = 0;
+    bool is_displayed = false;
 };

@@ -27,12 +27,7 @@ public:
 
     bool should_be_deleted = false;
 
-    // void create_vertex_buffer();
-    // void create_index_buffer();
-
-    // uint32_t find_memory_type(uint32_t type_filter, VkMemoryPropertyFlags properties);
-    // void create_buffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory);
-    // void copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size);
+    void put_tree(glm::ivec3 pos);
 
     Chunk(glm::vec2 pos, FastNoiseLite& noise);
     ~Chunk();
