@@ -107,8 +107,8 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                     if (x == 0 || x == 15 || y == 0 || y == 99 || z == 0 || z == 15) {
                         engine.add_cube_to_vertices(chunk.blocks[x][y][z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
                     } else if (chunk.blocks[x - 1][y][z].type == 0 || chunk.blocks[x + 1][y][z].type == 0 || chunk.blocks[x][y - 1][z].type == 0 || chunk.blocks[x][y + 1][z].type == 0 || chunk.blocks[x][y][z - 1].type == 0 || chunk.blocks[x][y][z + 1].type == 0) {
-                        //engine.add_cube_to_vertices(chunk.blocks[x][y][z], chunk.blocks[x][y - 1][z].type, chunk.blocks[x][y + 1][z].type, chunk.blocks[x - 1][y][z].type, chunk.blocks[x + 1][y][z].type, chunk.blocks[x][y][z - 1].type, chunk.blocks[x][y][z + 1].type, chunk.pos);
-                        engine.add_cube_to_vertices(chunk.blocks[x][y][z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
+                        engine.add_cube_to_vertices(chunk.blocks[x][y][z], chunk.blocks[x][y - 1][z].type, chunk.blocks[x][y + 1][z].type, chunk.blocks[x - 1][y][z].type, chunk.blocks[x + 1][y][z].type, chunk.blocks[x][y][z - 1].type, chunk.blocks[x][y][z + 1].type, chunk.pos, chunk);
+                        //engine.add_cube_to_vertices(chunk.blocks[x][y][z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
                     }
                 }
             }
