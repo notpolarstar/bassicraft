@@ -18,6 +18,8 @@ private:
     Player player;
     
     FastNoiseLite noise;
+    FastNoiseLite biome_noise;
+
     int render_distance = 5;
 
     std::vector<Chunk> world;

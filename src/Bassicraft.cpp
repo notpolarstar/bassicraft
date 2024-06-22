@@ -18,10 +18,22 @@ Bassicraft::Bassicraft(/* args */)
     noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
     noise.SetSeed(rand());
     noise.SetFrequency(0.01f);
+    noise.SetFractalType(FastNoiseLite::FractalType_FBm);
+    noise.SetFractalOctaves(3);
+    noise.SetFractalLacunarity(2.0f);
+    noise.SetFractalGain(0.5f);
+
+    biome_noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
+    biome_noise.SetSeed(rand());
+    biome_noise.SetFrequency(0.02f);
+    biome_noise.SetFractalType(FastNoiseLite::FractalType_DomainWarpIndependent);
+    biome_noise.SetFractalOctaves(3);
+    biome_noise.SetFractalLacunarity(2.0f);
+    biome_noise.SetFractalGain(0.5f);
 
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
-            world.push_back(Chunk(glm::vec2(x, z), noise));
+            world.push_back(Chunk(glm::vec2(x, z), noise, biome_noise));
         }
     }
 
@@ -36,8 +48,6 @@ Bassicraft::Bassicraft(/* args */)
     engine.create_texture_image();
     engine.create_texture_image_view();
     engine.create_texture_sampler();
-    // engine.create_vertex_buffer();
-    // engine.create_index_buffer();
     engine.create_uniform_buffers();
     engine.create_descriptor_pool();
     engine.create_descriptor_sets();
@@ -66,26 +76,8 @@ Bassicraft::Bassicraft(/* args */)
         if (glfwGetKey(engine.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
         }
-        if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
-            //engine.recreate_vertex_array();
-        }
-        // if (glfwGetKey(engine.window, GLFW_KEY_Q) == GLFW_PRESS) {
-        //     Cube cube{};
-        //     cube.type = rand() % 256;
-        //     cube.pos = glm::ivec3(rand() % 16, rand() % 100, rand() % 16);
-        //     while (world[0].blocks[cube.pos.x][cube.pos.y][cube.pos.z].type != 0) {
-        //         cube.pos = glm::ivec3(rand() % 16, rand() % 100, rand() % 16);
-        //     }
-        //     add_cube(cube);
-        //     engine.recreate_vertex_array();
-        // }
-        // if (glfwGetKey(engine.window, GLFW_KEY_E) == GLFW_PRESS) {
-        //     glm::ivec3 pos = glm::ivec3(rand() % 16, rand() % 100, rand() % 16);
-        //     while (world[0].blocks[pos.x][pos.y][pos.z].type == 0) {
-        //         pos = glm::ivec3(rand() % 16, rand() % 100, rand() % 16);
-        //     }
-        //     remove_cube(pos);
-        //     engine.recreate_vertex_array();
+        // if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
+        //     //engine.recreate_vertex_array();
         // }
         unload_load_new_chunks();
         player.processInput(engine.window);
@@ -109,7 +101,6 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                         engine.add_cube_to_vertices(chunk.blocks[x][y][z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
                     } else if (chunk.blocks[x - 1][y][z].type == 0 || chunk.blocks[x + 1][y][z].type == 0 || chunk.blocks[x][y - 1][z].type == 0 || chunk.blocks[x][y + 1][z].type == 0 || chunk.blocks[x][y][z - 1].type == 0 || chunk.blocks[x][y][z + 1].type == 0) {
                         engine.add_cube_to_vertices(chunk.blocks[x][y][z], chunk.blocks[x][y - 1][z].type, chunk.blocks[x][y + 1][z].type, chunk.blocks[x - 1][y][z].type, chunk.blocks[x + 1][y][z].type, chunk.blocks[x][y][z - 1].type, chunk.blocks[x][y][z + 1].type, chunk.pos, chunk);
-                        //engine.add_cube_to_vertices(chunk.blocks[x][y][z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
                     }
                 }
             }
@@ -122,9 +113,6 @@ void Bassicraft::unload_load_new_chunks()
     glm::vec2 player_chunk = glm::vec2((int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
     for (auto& chunk : world) {
         if (chunk.pos.x < player_chunk.x - render_distance || chunk.pos.x > player_chunk.x + render_distance || chunk.pos.y < player_chunk.y - render_distance || chunk.pos.y > player_chunk.y + render_distance) {
-            // engine.free_buffers_chunk(chunk);
-            // chunk = std::move(world.back());
-            // world.pop_back();
             chunk.should_be_deleted = true;
         }
     }
@@ -139,7 +127,7 @@ void Bassicraft::unload_load_new_chunks()
             }
             if (!found) {
                 int siz = world.size();
-                world.push_back(Chunk(glm::vec2(player_chunk.x + x, player_chunk.y + z), noise));
+                world.push_back(Chunk(glm::vec2(player_chunk.x + x, player_chunk.y + z), noise, biome_noise));
                 set_blocks_in_vertex_buffer(world[siz]);
                 engine.create_vertex_buffer_chunk(world[siz]);
                 engine.create_index_buffer_chunk(world[siz]);
@@ -152,6 +140,7 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
 {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glm::vec4 pos = get_cube_pointed_at();
+        //std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
         if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type != 0) {
             remove_cube(world[pos.w], pos, world[pos.w].blocks[pos.x][pos.y][pos.z]);
             engine.recreate_buffers_chunk(world[pos.w]);
@@ -231,15 +220,15 @@ glm::vec4 Bassicraft::get_cube_pointed_at()
     for (float t = 0.0f; t < 10.0f; t += 0.01f) {
         glm::vec3 position = start + ray * t;
         glm::ivec3 block_position = glm::floor(position);
-        glm::vec2 chunk_pos = glm::vec2(block_position.x / 16, block_position.z / 16);
-        if (block_position.x < 0) {
-            chunk_pos.x -= 1;
-        }
-        if (block_position.z < 0) {
-            chunk_pos.y -= 1;
-        }
+        glm::vec2 chunk_pos = glm::vec2((int)block_position.x / 16, (int)block_position.z / 16);
         glm::ivec3 block_position_in_chunk = glm::ivec3(regular_modulo(block_position.x, 16), block_position.y, regular_modulo(block_position.z, 16));
 
+        if (block_position.x < 0 && block_position_in_chunk.x != 0) {
+            chunk_pos.x--;
+        }
+        if (block_position.z < 0 && block_position_in_chunk.z != 0) {
+            chunk_pos.y--;
+        }
         int index = 0;
         for (auto& chunk : world) {
             if (chunk.pos == chunk_pos) {

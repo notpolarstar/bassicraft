@@ -29,6 +29,6 @@ public:
 
     void put_tree(glm::ivec3 pos);
 
-    Chunk(glm::vec2 pos, FastNoiseLite& noise);
+    Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise);
     ~Chunk();
 };

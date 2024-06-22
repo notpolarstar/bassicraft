@@ -5,26 +5,34 @@
 #include "VkEngine.hpp"
 #include "Chunk.hpp"
 
-Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise) : pos(pos)
+Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : pos(pos)
 {
+    int biome = (int)abs(biome_noise.GetNoise(pos.x, pos.y) * 10);
+
+    uint16_t block_surface = (biome == 0) ? 19 : (biome == 9) ? 67 : 1;
+    uint16_t block_under_surface = (biome == 0) ? 19 : (biome == 9) ? 67 : 3;
+    uint16_t water_type = (biome == 0) ?  : (biome == 9) ? 68 : 206;
+
     for (int x = 0; x < 16; x++)
     {
         for (int z = 0; z < 16; z++)
         {
             int height = (int)(noise.GetNoise((float)(x + pos.x * 16), (float)(z + pos.y * 16)) * 10) + 10;
-            //std::cout << height << std::endl;
+            //DEBUG for super flat world
+            //height = 15;
             for (int y = 20; y > height - 1; y--)
             {
-                blocks[x][y][z] = {glm::ivec3(x, y, z), 3, 0};
+                blocks[x][y][z] = {glm::ivec3(x, y, z), block_under_surface, 0};
             }
-            if (height >= 16) {
-                blocks[x][height][z] = {glm::ivec3(x, height, z), 19, 0};
-            } else {
-                blocks[x][height][z] = {glm::ivec3(x, height, z), 1, 0};
-            }
+            blocks[x][height][z] = {glm::ivec3(x, height, z), block_surface, 0};
+            // if (height >= 16) {
+            //     blocks[x][height][z] = {glm::ivec3(x, height, z), 19, 0};
+            // } else {
+            //     blocks[x][height][z] = {glm::ivec3(x, height, z), 1, 0};
+            // }
             for (int y = height - 1; y > 15; y--)
             {
-                blocks[x][y][z] = {glm::ivec3(x, y, z), 206, 0};
+                blocks[x][y][z] = {glm::ivec3(x, y, z), water_type, 0};
             }
             // if (rand() % 100 == 5 && height <= 16) {
             //     put_tree(glm::ivec3(x, height, z));

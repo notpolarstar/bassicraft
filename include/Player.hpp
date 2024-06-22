@@ -35,7 +35,7 @@ public:
             .worldUp = glm::vec3(0.0f, -1.0f, 0.0f),
             .yaw = -90.0f,
             .pitch = 0.0f,
-            .speed = 0.55f,
+            .speed = 0.25f,
             .speed_turn = 0.1f,
             .sensitivity = 0.1f,
             .fov = 45.0f
