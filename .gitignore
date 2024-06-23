@@ -36,4 +36,5 @@ shaders/compile.sh
 img/bassirou256.jpg
 .vscode
 *.tmp
+imgui.ini
 bassicraft

@@ -10,6 +10,7 @@
 #include "Cube.hpp"
 #include "Player.hpp"
 #include "Chunk.hpp"
+#include "TextureDataStruct.hpp"
 
 class VkEngine
 {
@@ -111,9 +112,9 @@ private:
 
     const int MAX_FRAMES_IN_FLIGHT = 2;
 
-    int width = 800;
-    int height = 600;
 public:
+    int width = 1920;
+    int height = 1080;
     GLFWwindow *window;
 
     void create_swapchain();
@@ -162,6 +163,10 @@ public:
     void create_vertex_buffer_chunk(Chunk& chunk);
     void create_index_buffer_chunk(Chunk& chunk);
     void recreate_buffers_chunk(Chunk& chunk);
+
+    void create_inventory();
+    bool LoadTextureFromFile(const char* filename, MyTextureData* tex_data);
+    void RemoveTexture(MyTextureData* tex_data);
 
     VkEngine();
     ~VkEngine();

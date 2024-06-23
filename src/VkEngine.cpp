@@ -12,6 +12,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+
 #include "VkEngine.hpp"
 #include "VkBootstrap.h"
 #include "Utils.hpp"
@@ -407,6 +411,9 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
         vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(chunk.indices.size()), 1, 0, 0, 0);
     }
 
+    //Render GUI
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), vk_command_buffers[current_frame]);
+
     vkCmdEndRenderPass(command_buffer);
 
     if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
@@ -759,17 +766,44 @@ void VkEngine::update_uniform_buffer(uint32_t current_image, Camera& camera)
 
 void VkEngine::create_descriptor_pool()
 {
-    std::array<VkDescriptorPoolSize, 2> pool_sizes = {};
-    pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    pool_sizes[0].descriptorCount = static_cast<uint32_t>(vk_images.size());
-    pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    pool_sizes[1].descriptorCount = static_cast<uint32_t>(vk_images.size());
+    // std::array<VkDescriptorPoolSize, 2> pool_sizes = {};
+    // pool_sizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    // pool_sizes[0].descriptorCount = static_cast<uint32_t>(vk_images.size());
+    // pool_sizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    // pool_sizes[1].descriptorCount = static_cast<uint32_t>(vk_images.size());
+
+    // VkDescriptorPoolCreateInfo pool_info = {};
+    // pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    // pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+    // pool_info.pPoolSizes = pool_sizes.data();
+    // pool_info.maxSets = 99;
+    // pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+    // if (vkCreateDescriptorPool(device.device, &pool_info, nullptr, &vk_descriptor_pool) != VK_SUCCESS) {
+    //     throw std::runtime_error("Could not create descriptor pool");
+    // }
+
+    VkDescriptorPoolSize pool_sizes[] =
+    {
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+    };
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
-    pool_info.pPoolSizes = pool_sizes.data();
-    pool_info.maxSets = static_cast<uint32_t>(vk_images.size());
+    pool_info.poolSizeCount = static_cast<uint32_t>(std::size(pool_sizes));
+    pool_info.pPoolSizes = pool_sizes;
+    pool_info.maxSets = 1000;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
     if (vkCreateDescriptorPool(device.device, &pool_info, nullptr, &vk_descriptor_pool) != VK_SUCCESS) {
         throw std::runtime_error("Could not create descriptor pool");
@@ -1315,6 +1349,255 @@ void VkEngine::recreate_buffers_chunk(Chunk& chunk)
     free_buffers_chunk(chunk);
     create_vertex_buffer_chunk(chunk);
     create_index_buffer_chunk(chunk);
+}
+
+static void check_vk_result(VkResult err)
+{
+    if (err == 0)
+        return;
+    fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
+    if (err < 0)
+        abort();
+}
+
+bool VkEngine::LoadTextureFromFile(const char* filename, MyTextureData* tex_data)
+{
+    // Specifying 4 channels forces stb to load the image in RGBA which is an easy format for Vulkan
+    tex_data->Channels = 4;
+    unsigned char* image_data = stbi_load(filename, &tex_data->Width, &tex_data->Height, 0, tex_data->Channels);
+
+    if (image_data == NULL) {
+        fprintf(stderr, "Could not load texture file %s\n", filename);
+        return false;
+    }
+
+    // Calculate allocation size (in number of bytes)
+    size_t image_size = tex_data->Width * tex_data->Height * tex_data->Channels;
+
+    VkResult err;
+
+    // Create the Vulkan image.
+    {
+        VkImageCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        info.imageType = VK_IMAGE_TYPE_2D;
+        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.extent.width = tex_data->Width;
+        info.extent.height = tex_data->Height;
+        info.extent.depth = 1;
+        info.mipLevels = 1;
+        info.arrayLayers = 1;
+        info.samples = VK_SAMPLE_COUNT_1_BIT;
+        info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        info.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        err = vkCreateImage(device.device, &info, nullptr, &tex_data->Image);
+        check_vk_result(err);
+        VkMemoryRequirements req;
+        vkGetImageMemoryRequirements(device.device, tex_data->Image, &req);
+        VkMemoryAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        alloc_info.allocationSize = req.size;
+        alloc_info.memoryTypeIndex = find_memory_type(req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        err = vkAllocateMemory(device.device, &alloc_info, nullptr, &tex_data->ImageMemory);
+        check_vk_result(err);
+        err = vkBindImageMemory(device.device, tex_data->Image, tex_data->ImageMemory, 0);
+        check_vk_result(err);
+    }
+
+    // Create the Image View
+    {
+        VkImageViewCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        info.image = tex_data->Image;
+        info.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        info.subresourceRange.levelCount = 1;
+        info.subresourceRange.layerCount = 1;
+        err = vkCreateImageView(device.device, &info, nullptr, &tex_data->ImageView);
+        check_vk_result(err);
+    }
+
+    // Create Sampler
+    {
+        VkSamplerCreateInfo sampler_info{};
+        sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+        sampler_info.magFilter = VK_FILTER_LINEAR;
+        sampler_info.minFilter = VK_FILTER_LINEAR;
+        sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT; // outside image bounds just use border color
+        sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        sampler_info.minLod = -1000;
+        sampler_info.maxLod = 1000;
+        sampler_info.maxAnisotropy = 1.0f;
+        err = vkCreateSampler(device.device, &sampler_info, nullptr, &tex_data->Sampler);
+        check_vk_result(err);
+    }
+
+    // Create Descriptor Set using ImGUI's implementation
+    tex_data->DS = ImGui_ImplVulkan_AddTexture(tex_data->Sampler, tex_data->ImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    // Create Upload Buffer
+    {
+        VkBufferCreateInfo buffer_info = {};
+        buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_info.size = image_size;
+        buffer_info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        err = vkCreateBuffer(device.device, &buffer_info, nullptr, &tex_data->UploadBuffer);
+        check_vk_result(err);
+        VkMemoryRequirements req;
+        vkGetBufferMemoryRequirements(device.device, tex_data->UploadBuffer, &req);
+        VkMemoryAllocateInfo alloc_info = {};
+        alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        alloc_info.allocationSize = req.size;
+        alloc_info.memoryTypeIndex = find_memory_type(req.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+        err = vkAllocateMemory(device.device, &alloc_info, nullptr, &tex_data->UploadBufferMemory);
+        check_vk_result(err);
+        err = vkBindBufferMemory(device.device, tex_data->UploadBuffer, tex_data->UploadBufferMemory, 0);
+        check_vk_result(err);
+    }
+
+    // Upload to Buffer:
+    {
+        void* map = NULL;
+        err = vkMapMemory(device.device, tex_data->UploadBufferMemory, 0, image_size, 0, &map);
+        check_vk_result(err);
+        memcpy(map, image_data, image_size);
+        VkMappedMemoryRange range[1] = {};
+        range[0].sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        range[0].memory = tex_data->UploadBufferMemory;
+        range[0].size = image_size;
+        err = vkFlushMappedMemoryRanges(device.device, 1, range);
+        check_vk_result(err);
+        vkUnmapMemory(device.device, tex_data->UploadBufferMemory);
+    }
+
+    // Release image memory using stb
+    stbi_image_free(image_data);
+
+    // Create a command buffer that will perform following steps when hit in the command queue.
+    // TODO: this works in the example, but may need input if this is an acceptable way to access the pool/create the command buffer.
+    VkCommandPool command_pool = vk_command_pool;
+    VkCommandBuffer command_buffer;
+    {
+        VkCommandBufferAllocateInfo alloc_info{};
+        alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        alloc_info.commandPool = vk_command_pool;
+        alloc_info.commandBufferCount = 1;
+
+        err = vkAllocateCommandBuffers(device.device, &alloc_info, &command_buffer);
+        check_vk_result(err);
+
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        err = vkBeginCommandBuffer(command_buffer, &begin_info);
+        check_vk_result(err);
+    }
+
+    // Copy to Image
+    {
+        VkImageMemoryBarrier copy_barrier[1] = {};
+        copy_barrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        copy_barrier[0].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        copy_barrier[0].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        copy_barrier[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        copy_barrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        copy_barrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        copy_barrier[0].image = tex_data->Image;
+        copy_barrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copy_barrier[0].subresourceRange.levelCount = 1;
+        copy_barrier[0].subresourceRange.layerCount = 1;
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_HOST_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, copy_barrier);
+
+        VkBufferImageCopy region = {};
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.layerCount = 1;
+        region.imageExtent.width = tex_data->Width;
+        region.imageExtent.height = tex_data->Height;
+        region.imageExtent.depth = 1;
+        vkCmdCopyBufferToImage(command_buffer, tex_data->UploadBuffer, tex_data->Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+        VkImageMemoryBarrier use_barrier[1] = {};
+        use_barrier[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        use_barrier[0].srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        use_barrier[0].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        use_barrier[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        use_barrier[0].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        use_barrier[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        use_barrier[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        use_barrier[0].image = tex_data->Image;
+        use_barrier[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        use_barrier[0].subresourceRange.levelCount = 1;
+        use_barrier[0].subresourceRange.layerCount = 1;
+        vkCmdPipelineBarrier(command_buffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1, use_barrier);
+    }
+
+    // End command buffer
+    {
+        VkSubmitInfo end_info = {};
+        end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        end_info.commandBufferCount = 1;
+        end_info.pCommandBuffers = &command_buffer;
+        err = vkEndCommandBuffer(command_buffer);
+        check_vk_result(err);
+        err = vkQueueSubmit(vk_graphics_queue, 1, &end_info, VK_NULL_HANDLE);
+        check_vk_result(err);
+        err = vkDeviceWaitIdle(device.device);
+        check_vk_result(err);
+    }
+
+    return true;
+}
+
+// Helper function to cleanup an image loaded with LoadTextureFromFile
+void VkEngine::RemoveTexture(MyTextureData* tex_data)
+{
+    vkFreeMemory(device.device, tex_data->UploadBufferMemory, nullptr);
+    vkDestroyBuffer(device.device, tex_data->UploadBuffer, nullptr);
+    vkDestroySampler(device.device, tex_data->Sampler, nullptr);
+    vkDestroyImageView(device.device, tex_data->ImageView, nullptr);
+    vkDestroyImage(device.device, tex_data->Image, nullptr);
+    vkFreeMemory(device.device, tex_data->ImageMemory, nullptr);
+    ImGui_ImplVulkan_RemoveTexture(tex_data->DS);
+}
+
+void VkEngine::create_inventory()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    (void) io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+    io.WantCaptureMouse = true;
+    io.WantCaptureKeyboard = true;
+    io.WantTextInput = true;
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = instance.instance;
+    init_info.PhysicalDevice = device.physical_device;
+    init_info.Device = device.device;
+    init_info.QueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
+    init_info.Queue = vk_graphics_queue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = vk_descriptor_pool;
+    init_info.Subpass = 0;
+    init_info.Allocator = nullptr;
+    init_info.MinImageCount = swapchain.image_count;
+    init_info.ImageCount = swapchain.image_count;
+    init_info.RenderPass = vk_render_pass;
+    init_info.CheckVkResultFn = check_vk_result;
+    init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    
+    ImGui_ImplVulkan_Init(&init_info);
 }
 
 void VkEngine::wait_idle()

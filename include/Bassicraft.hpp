@@ -10,6 +10,8 @@
 #include "Player.hpp"
 #include "Chunk.hpp"
 #include "FastNoiseLite.hpp"
+#include "TextureDataStruct.hpp"
+#include "Inventory.hpp"
 
 class Bassicraft
 {
@@ -21,16 +23,27 @@ private:
     FastNoiseLite biome_noise;
 
     int render_distance = 5;
+    bool is_cursor_locked = true;
 
     std::vector<Chunk> world;
+
+    Inventory inventory;
+    MyTextureData selected_slot_tex;
+    MyTextureData regular_slot_tex;
+
+    int width;
+    int height;
 public:
     Bassicraft(/* args */);
     ~Bassicraft();
 
+    void init_engine();
+    void init_textures();
     void add_cube(Chunk& chunk, Cube& cube);
     void remove_cube(Chunk& chunk, glm::ivec3 pos, Cube& cube);
     void set_blocks_in_vertex_buffer(Chunk& chunk);
     void unload_load_new_chunks();
     void mouse_buttons(GLFWwindow* window, int button, int action, int mods);
     glm::vec4 get_cube_pointed_at();
+    void display_hotbar();
 };

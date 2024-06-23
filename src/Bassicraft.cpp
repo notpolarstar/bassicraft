@@ -6,6 +6,10 @@
 
 #include <vulkan/vulkan.h>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+
 #include "VkEngine.hpp"
 #include "Bassicraft.hpp"
 #include "VkBootstrap.h"
@@ -31,12 +35,91 @@ Bassicraft::Bassicraft(/* args */)
     biome_noise.SetFractalLacunarity(2.0f);
     biome_noise.SetFractalGain(0.5f);
 
+    init_engine();
+    init_textures();
+
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
             world.push_back(Chunk(glm::vec2(x, z), noise, biome_noise));
         }
     }
 
+    std::cout << "engine created\n";
+    for (auto& chunk : world) {
+        set_blocks_in_vertex_buffer(chunk);
+        engine.create_vertex_buffer_chunk(chunk);
+        engine.create_index_buffer_chunk(chunk);
+    }
+
+    glfwSetWindowUserPointer(engine.window, this);
+    glfwSetMouseButtonCallback(engine.window, [](GLFWwindow* window, int button, int action, int mods) {
+        static_cast<Bassicraft*>(glfwGetWindowUserPointer(window))->mouse_buttons(window, button, action, mods);
+    });
+
+    while (!glfwWindowShouldClose(engine.window)) {
+        glfwPollEvents();
+        ImGui_ImplGlfw_MouseButtonCallback(engine.window, 0, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS);
+
+        glfwGetFramebufferSize(engine.window, &width, &height);
+        while (width == 0 || height == 0) {
+            glfwGetFramebufferSize(engine.window, &width, &height);
+            glfwWaitEvents();
+        }
+        if (glfwGetKey(engine.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
+        }
+        if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
+            if (is_cursor_locked) {
+                is_cursor_locked = false;
+                glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            } else {
+                is_cursor_locked = true;
+                glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+        }
+        for (int key = GLFW_KEY_1; key <= GLFW_KEY_9; key++) {
+            if (glfwGetKey(engine.window, key) == GLFW_PRESS) {
+                inventory.selected_slot = key - GLFW_KEY_1;
+            }
+        }
+
+        bool open = true;
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        //ImGui::ShowDemoWindow(&open);
+        ImGui::Begin("Debug", &open, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Player position: %.1f %.1f %.1f", player.camera.pos.x, player.camera.pos.y, player.camera.pos.z);
+        ImGui::Text("Player chunk: %d %d", (int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
+        ImGui::Image((ImTextureID)selected_slot_tex.DS, ImVec2(selected_slot_tex.Width, selected_slot_tex.Height));
+        ImGui::End();
+
+        display_hotbar();
+    
+        ImGui::Render();
+
+        unload_load_new_chunks();
+        player.processInput(engine.window);
+        engine.draw_frame(player, world);
+    }
+    engine.wait_idle();
+
+    engine.RemoveTexture(&selected_slot_tex);
+    engine.RemoveTexture(&regular_slot_tex);
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    for (auto& chunk : world) {
+        engine.free_buffers_chunk(chunk);
+    }
+    glfwDestroyWindow(engine.window);
+    glfwTerminate();
+}
+
+void Bassicraft::init_engine()
+{
     engine.create_swapchain();
     engine.get_queues();
     engine.create_render_pass();
@@ -53,42 +136,15 @@ Bassicraft::Bassicraft(/* args */)
     engine.create_descriptor_sets();
     engine.create_command_buffers();
     engine.create_sync_objects();
+    engine.create_inventory();
+}
 
-    std::cout << "engine created\n";
-    for (auto& chunk : world) {
-        set_blocks_in_vertex_buffer(chunk);
-        engine.create_vertex_buffer_chunk(chunk);
-        engine.create_index_buffer_chunk(chunk);
-    }
-
-    glfwSetWindowUserPointer(engine.window, this);
-    glfwSetMouseButtonCallback(engine.window, [](GLFWwindow* window, int button, int action, int mods) {
-        static_cast<Bassicraft*>(glfwGetWindowUserPointer(window))->mouse_buttons(window, button, action, mods);
-    });
-    while (!glfwWindowShouldClose(engine.window)) {
-        glfwPollEvents();
-        int width, height;
-        glfwGetFramebufferSize(engine.window, &width, &height);
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(engine.window, &width, &height);
-            glfwWaitEvents();
-        }
-        if (glfwGetKey(engine.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
-        }
-        // if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
-        //     //engine.recreate_vertex_array();
-        // }
-        unload_load_new_chunks();
-        player.processInput(engine.window);
-        engine.draw_frame(player, world);
-    }
-    engine.wait_idle();
-    for (auto& chunk : world) {
-        engine.free_buffers_chunk(chunk);
-    }
-    glfwDestroyWindow(engine.window);
-    glfwTerminate();
+void Bassicraft::init_textures()
+{
+    bool error = engine.LoadTextureFromFile("img/selected_slot.png", &selected_slot_tex);
+    IM_ASSERT(error);
+    error = engine.LoadTextureFromFile("img/regular_slot.png", &regular_slot_tex);
+    IM_ASSERT(error);
 }
 
 void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
@@ -159,7 +215,12 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
             engine.recreate_buffers_chunk(world[pos.w]);
         }
     }
-
+    if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
+        glm::vec4 pos = get_cube_pointed_at();
+        if (pos.w != -42069) {
+            std::cout << "Block type: " << world[pos.w].blocks[pos.x][pos.y][pos.z].type << std::endl;
+        }
+    }
 }
 
 void Bassicraft::add_cube(Chunk& chunk, Cube& cube)
@@ -240,6 +301,25 @@ glm::vec4 Bassicraft::get_cube_pointed_at()
         }
     }
     return glm::vec4(0, 0, 0, -42069);
+}
+
+void Bassicraft::display_hotbar()
+{
+    ImGui::Begin("Hotbar", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNav);
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetWindowPos(ImVec2(io.DisplaySize.x / 2 - 9 * 32, io.DisplaySize.y - 32 * 3));
+    ImGui::SetWindowSize(ImVec2(width, 32 * 3));
+    for (int i = 0; i < 9; i++) {
+        ImGui::SameLine();
+        if (i == inventory.selected_slot) {
+            ImGui::Image((ImTextureID)selected_slot_tex.DS, ImVec2(selected_slot_tex.Width * 3.0f, selected_slot_tex.Height * 3.0f));
+        } else {
+            ImGui::Image((ImTextureID)regular_slot_tex.DS, ImVec2(regular_slot_tex.Width * 3.0f, regular_slot_tex.Height * 3.0f));
+        }
+        //ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
+    }
+    ImGui::End();
+
 }
 
 Bassicraft::~Bassicraft()
