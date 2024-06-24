@@ -406,14 +406,14 @@ void Bassicraft::display_inventory()
     ImGui::SetWindowSize(ImVec2(32 * 9 * 2, 32 * 9 * 2));
     ImGui::Text("Inventory");
     ImVec2 cursor_base = ImGui::GetCursorPos();
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 32; i++) {
         for (int j = 0; j < 8; j++) {
             ImGui::SameLine();
             ImGui::SetCursorPos(ImVec2(cursor_base.x + j * 32 * 2, cursor_base.y + i * 32 * 2));
             ImGui::Image((ImTextureID)regular_slot_tex.DS, ImVec2(regular_slot_tex.Width * 3.0f, regular_slot_tex.Height * 3.0f));
             ImGui::SameLine();
-            ImGui::SetCursorPos(ImVec2(cursor_base.x + i * 32 * 2 + 8, cursor_base.y + j * 32 * 2 + 8));
-            int item = j * 8 + i;
+            ImGui::SetCursorPos(ImVec2(cursor_base.x + j * 32 * 2 + 8, cursor_base.y + i * 32 * 2 + 8));
+            int item = i * 8 + j;
             ImGui::Image((ImTextureID)blocks_tex.DS, ImVec2(32, 32), ImVec2((item % 16) / 16.0f, (item / 16) / 16.0f), ImVec2((item % 16 + 1) / 16.0f, (item / 16 + 1) / 16.0f));
             if (ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
