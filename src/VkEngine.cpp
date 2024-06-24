@@ -1381,7 +1381,7 @@ bool VkEngine::LoadTextureFromFile(const char* filename, MyTextureData* tex_data
         VkImageCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         info.imageType = VK_IMAGE_TYPE_2D;
-        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.format = VK_FORMAT_R8G8B8A8_SRGB;
         info.extent.width = tex_data->Width;
         info.extent.height = tex_data->Height;
         info.extent.depth = 1;
@@ -1412,7 +1412,7 @@ bool VkEngine::LoadTextureFromFile(const char* filename, MyTextureData* tex_data
         info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         info.image = tex_data->Image;
         info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        info.format = VK_FORMAT_R8G8B8A8_UNORM;
+        info.format = VK_FORMAT_R8G8B8A8_SRGB;
         info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         info.subresourceRange.levelCount = 1;
         info.subresourceRange.layerCount = 1;
@@ -1421,24 +1421,10 @@ bool VkEngine::LoadTextureFromFile(const char* filename, MyTextureData* tex_data
     }
 
     // Create Sampler
-    {
-        VkSamplerCreateInfo sampler_info{};
-        sampler_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-        sampler_info.magFilter = VK_FILTER_LINEAR;
-        sampler_info.minFilter = VK_FILTER_LINEAR;
-        sampler_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-        sampler_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT; // outside image bounds just use border color
-        sampler_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        sampler_info.minLod = -1000;
-        sampler_info.maxLod = 1000;
-        sampler_info.maxAnisotropy = 1.0f;
-        err = vkCreateSampler(device.device, &sampler_info, nullptr, &tex_data->Sampler);
-        check_vk_result(err);
-    }
+    tex_data->Sampler = vk_texture_sampler;
 
     // Create Descriptor Set using ImGUI's implementation
-    tex_data->DS = ImGui_ImplVulkan_AddTexture(tex_data->Sampler, tex_data->ImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    tex_data->DS = ImGui_ImplVulkan_AddTexture(vk_texture_sampler, tex_data->ImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     // Create Upload Buffer
     {
@@ -1560,7 +1546,7 @@ void VkEngine::RemoveTexture(MyTextureData* tex_data)
 {
     vkFreeMemory(device.device, tex_data->UploadBufferMemory, nullptr);
     vkDestroyBuffer(device.device, tex_data->UploadBuffer, nullptr);
-    vkDestroySampler(device.device, tex_data->Sampler, nullptr);
+    //vkDestroySampler(device.device, tex_data->Sampler, nullptr);
     vkDestroyImageView(device.device, tex_data->ImageView, nullptr);
     vkDestroyImage(device.device, tex_data->Image, nullptr);
     vkFreeMemory(device.device, tex_data->ImageMemory, nullptr);

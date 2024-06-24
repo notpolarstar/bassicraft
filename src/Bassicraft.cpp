@@ -55,6 +55,9 @@ Bassicraft::Bassicraft(/* args */)
     glfwSetMouseButtonCallback(engine.window, [](GLFWwindow* window, int button, int action, int mods) {
         static_cast<Bassicraft*>(glfwGetWindowUserPointer(window))->mouse_buttons(window, button, action, mods);
     });
+    glfwSetKeyCallback(engine.window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+        static_cast<Bassicraft*>(glfwGetWindowUserPointer(window))->key_callback(window, key, scancode, action, mods);
+    });
 
     while (!glfwWindowShouldClose(engine.window)) {
         glfwPollEvents();
@@ -65,23 +68,24 @@ Bassicraft::Bassicraft(/* args */)
             glfwGetFramebufferSize(engine.window, &width, &height);
             glfwWaitEvents();
         }
-        if (glfwGetKey(engine.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-            glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
-        }
-        if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
-            if (is_cursor_locked) {
-                is_cursor_locked = false;
-                glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            } else {
-                is_cursor_locked = true;
-                glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-            }
-        }
-        for (int key = GLFW_KEY_1; key <= GLFW_KEY_9; key++) {
-            if (glfwGetKey(engine.window, key) == GLFW_PRESS) {
-                inventory.selected_slot = key - GLFW_KEY_1;
-            }
-        }
+        // if (glfwGetKey(engine.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        //     glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
+        // }
+        // if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
+        //     if (is_cursor_locked) {
+        //         is_cursor_locked = false;
+        //         glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        //     } else {
+        //         is_cursor_locked = true;
+        //         glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        //     }
+        // }
+        // for (int key = GLFW_KEY_1; key <= GLFW_KEY_9; key++) {
+        //     if (glfwGetKey(engine.window, key) == GLFW_PRESS) {
+        //         inventory.selected_slot = key - GLFW_KEY_1;
+        //         player.selected_item = inventory.hotbar[inventory.selected_slot];
+        //     }
+        // }
 
         bool open = true;
         ImGui_ImplVulkan_NewFrame();
@@ -96,17 +100,30 @@ Bassicraft::Bassicraft(/* args */)
         ImGui::End();
 
         display_hotbar();
+
+        if (is_inventory_open) {
+            display_inventory();
+        } else {
+            display_crosshair();
+        }
     
         ImGui::Render();
 
         unload_load_new_chunks();
-        player.processInput(engine.window);
+        if (is_cursor_locked) {
+            player.processInput(engine.window);
+            player.mouse_movement(engine.window);
+        } else {
+            player.update_mouse_pos(engine.window);
+        }
         engine.draw_frame(player, world);
     }
     engine.wait_idle();
 
     engine.RemoveTexture(&selected_slot_tex);
     engine.RemoveTexture(&regular_slot_tex);
+    engine.RemoveTexture(&crosshair);
+    engine.RemoveTexture(&blocks_tex);
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -144,6 +161,10 @@ void Bassicraft::init_textures()
     bool error = engine.LoadTextureFromFile("img/selected_slot.png", &selected_slot_tex);
     IM_ASSERT(error);
     error = engine.LoadTextureFromFile("img/regular_slot.png", &regular_slot_tex);
+    IM_ASSERT(error);
+    error = engine.LoadTextureFromFile("img/crosshair.png", &crosshair);
+    IM_ASSERT(error);
+    error = engine.LoadTextureFromFile("img/texture_atlas.png", &blocks_tex);
     IM_ASSERT(error);
 }
 
@@ -192,8 +213,49 @@ void Bassicraft::unload_load_new_chunks()
     }
 }
 
+void Bassicraft::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
+    if (key == GLFW_KEY_KP_6 && action == GLFW_PRESS) {
+        if (is_cursor_locked) {
+            is_cursor_locked = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        } else {
+            is_cursor_locked = true;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+    }
+    for (int key = GLFW_KEY_1; key <= GLFW_KEY_9; key++) {
+        if (glfwGetKey(window, key) == GLFW_PRESS) {
+            inventory.selected_slot = key - GLFW_KEY_1;
+            player.selected_item = inventory.hotbar[inventory.selected_slot];
+        }
+    }
+    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        if (is_inventory_open) {
+            is_inventory_open = false;
+            is_cursor_locked = true;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        } else {
+            is_inventory_open = true;
+            is_cursor_locked = false;
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+    }
+}
+
 void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int mods)
 {
+    if (!is_cursor_locked) {
+        ImGuiIO& io = ImGui::GetIO();
+        if (io.WantCaptureMouse) {
+            io.AddMouseButtonEvent(button, action);
+        }
+        return;
+    }
+
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glm::vec4 pos = get_cube_pointed_at();
         //std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
@@ -206,7 +268,7 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
         glm::vec4 pos = get_cube_pointed_at();
         if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y - 1][pos.z].type == 0) {
             Cube cube{};
-            cube.type = rand() % 256;
+            cube.type = player.selected_item;
             if (cube.type == 0) {
                 cube.type = 1;
             }
@@ -309,17 +371,62 @@ void Bassicraft::display_hotbar()
     ImGuiIO& io = ImGui::GetIO();
     ImGui::SetWindowPos(ImVec2(io.DisplaySize.x / 2 - 9 * 32, io.DisplaySize.y - 32 * 3));
     ImGui::SetWindowSize(ImVec2(width, 32 * 3));
+    ImVec2 cursor_base = ImGui::GetCursorPos();
     for (int i = 0; i < 9; i++) {
         ImGui::SameLine();
+        ImGui::SetCursorPos(ImVec2(cursor_base.x + i * 32 * 2, cursor_base.y));
         if (i == inventory.selected_slot) {
             ImGui::Image((ImTextureID)selected_slot_tex.DS, ImVec2(selected_slot_tex.Width * 3.0f, selected_slot_tex.Height * 3.0f));
         } else {
             ImGui::Image((ImTextureID)regular_slot_tex.DS, ImVec2(regular_slot_tex.Width * 3.0f, regular_slot_tex.Height * 3.0f));
         }
-        //ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 8);
+        ImGui::SameLine();
+        ImGui::SetCursorPos(ImVec2(cursor_base.x + i * 32 * 2 + 8, cursor_base.y + 8));
+        ImGui::Image((ImTextureID)blocks_tex.DS, ImVec2(32, 32), ImVec2(((inventory.hotbar[i] - 1) % 16) / 16.0f, ((inventory.hotbar[i] - 1) / 16) / 16.0f), ImVec2(((inventory.hotbar[i] - 1) % 16 + 1) / 16.0f, ((inventory.hotbar[i] - 1) / 16 + 1) / 16.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
     }
     ImGui::End();
 
+}
+
+void Bassicraft::display_crosshair()
+{
+    ImGui::Begin("Crosshair", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNav);
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetWindowPos(ImVec2(io.DisplaySize.x / 2 - 16, io.DisplaySize.y / 2 - 16));
+    ImGui::SetWindowSize(ImVec2(64, 64));
+    ImGui::Image((ImTextureID)crosshair.DS, ImVec2(crosshair.Width * 2.0f, crosshair.Height * 2.0f));
+    ImGui::End();
+}
+
+void Bassicraft::display_inventory()
+{
+    ImGui::Begin("Inventory", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNav);
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::SetWindowPos(ImVec2(io.DisplaySize.x / 2 - 9 * 32, io.DisplaySize.y / 2 - 9 * 32));
+    ImGui::SetWindowSize(ImVec2(32 * 9 * 2, 32 * 9 * 2));
+    ImGui::Text("Inventory");
+    ImVec2 cursor_base = ImGui::GetCursorPos();
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            ImGui::SameLine();
+            ImGui::SetCursorPos(ImVec2(cursor_base.x + j * 32 * 2, cursor_base.y + i * 32 * 2));
+            ImGui::Image((ImTextureID)regular_slot_tex.DS, ImVec2(regular_slot_tex.Width * 3.0f, regular_slot_tex.Height * 3.0f));
+            ImGui::SameLine();
+            ImGui::SetCursorPos(ImVec2(cursor_base.x + i * 32 * 2 + 8, cursor_base.y + j * 32 * 2 + 8));
+            int item = j * 8 + i;
+            ImGui::Image((ImTextureID)blocks_tex.DS, ImVec2(32, 32), ImVec2((item % 16) / 16.0f, (item / 16) / 16.0f), ImVec2((item % 16 + 1) / 16.0f, (item / 16 + 1) / 16.0f));
+            if (ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::Text("Item %d", item);
+                ImGui::EndTooltip();
+                if (ImGui::IsItemClicked()) {
+                    inventory.hotbar[inventory.selected_slot] = item + 1;
+                    player.selected_item = inventory.hotbar[inventory.selected_slot];
+                }
+            }
+        }
+    }
+    ImGui::End();
 }
 
 Bassicraft::~Bassicraft()

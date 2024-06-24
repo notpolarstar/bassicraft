@@ -26,6 +26,8 @@ public:
     float lastX;
     float lastY;
 
+    int selected_item = 1;
+
     Player() {
         camera = {
             .pos = glm::vec3(0.0f, 0.0f, 0.2f),
@@ -67,7 +69,6 @@ public:
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
             camera.pos -= camera.speed * camera.up;
         }
-        mouse_movement(window);
     }
 
     void mouse_movement(GLFWwindow* window) {
@@ -102,5 +103,12 @@ public:
         front.y = sin(glm::radians(camera.pitch));
         front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
         camera.front = glm::normalize(front);
+    }
+
+    void update_mouse_pos(GLFWwindow* window) {
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        lastX = xpos;
+        lastY = ypos;
     }
 };
