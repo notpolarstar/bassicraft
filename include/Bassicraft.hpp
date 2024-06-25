@@ -49,7 +49,7 @@ public:
     void unload_load_new_chunks();
     void mouse_buttons(GLFWwindow* window, int button, int action, int mods);
     void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    glm::vec4 get_cube_pointed_at();
+    glm::vec4 get_cube_pointed_at(bool for_placing);
     void display_hotbar();
     void display_crosshair();
     void display_inventory();

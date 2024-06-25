@@ -257,28 +257,28 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
     }
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-        glm::vec4 pos = get_cube_pointed_at();
-        //std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
+        glm::vec4 pos = get_cube_pointed_at(false);
         if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type != 0) {
             remove_cube(world[pos.w], pos, world[pos.w].blocks[pos.x][pos.y][pos.z]);
             engine.recreate_buffers_chunk(world[pos.w]);
         }
     }
     if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-        glm::vec4 pos = get_cube_pointed_at();
-        if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y - 1][pos.z].type == 0) {
+        glm::vec4 pos = get_cube_pointed_at(true);
+        //std::cout << pos.x << " " << pos.y << " " << pos.z << " " << pos.w << std::endl;
+        if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type == 0) {
             Cube cube{};
             cube.type = player.selected_item;
             if (cube.type == 0) {
                 cube.type = 1;
             }
-            cube.pos = glm::ivec3(pos.x, pos.y - 1, pos.z);
+            cube.pos = glm::ivec3(pos.x, pos.y, pos.z);
             add_cube(world[pos.w], cube);
             engine.recreate_buffers_chunk(world[pos.w]);
         }
     }
     if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS) {
-        glm::vec4 pos = get_cube_pointed_at();
+        glm::vec4 pos = get_cube_pointed_at(false);
         if (pos.w != -42069) {
             std::cout << "Block type: " << world[pos.w].blocks[pos.x][pos.y][pos.z].type << std::endl;
         }
@@ -331,14 +331,13 @@ void Bassicraft::remove_cube(Chunk& chunk, glm::ivec3 pos, Cube& cube)
     }
 }
 
-glm::vec4 Bassicraft::get_cube_pointed_at()
+glm::vec4 Bassicraft::get_cube_pointed_at(bool for_placing)
 {
     //Return vec (16, 100, 16) position in the chunk
     //Return -42069 if no cube is pointed at
 
     glm::vec3 ray = player.camera.front;
     glm::vec3 start = player.camera.pos;
-    glm::vec3 end = start + ray * 10.0f;
 
     for (float t = 0.0f; t < 10.0f; t += 0.01f) {
         glm::vec3 position = start + ray * t;
@@ -356,6 +355,28 @@ glm::vec4 Bassicraft::get_cube_pointed_at()
         for (auto& chunk : world) {
             if (chunk.pos == chunk_pos) {
                 if (chunk.blocks[block_position_in_chunk.x][block_position_in_chunk.y][block_position_in_chunk.z].type != 0) {
+                    if (for_placing) {
+                        glm::ivec3 old_block = block_position;
+                        while (block_position == old_block) {
+                            position -= ray * 0.01f;
+                            block_position = glm::floor(position);
+                        }
+                        block_position_in_chunk = glm::ivec3(regular_modulo(block_position.x, 16), block_position.y, regular_modulo(block_position.z, 16));
+                        chunk_pos = glm::vec2((int)block_position.x / 16, (int)block_position.z / 16);
+                        if (block_position.x < 0 && block_position_in_chunk.x != 0) {
+                            chunk_pos.x--;
+                        }                            
+                        if (block_position.z < 0 && block_position_in_chunk.z != 0) {
+                            chunk_pos.y--;
+                        }
+                        index = 0;
+                        for (auto& chunk : world) {
+                            if (chunk.pos == chunk_pos) {
+                                return glm::vec4(block_position_in_chunk, index);
+                            }
+                            index++;
+                        }
+                    }
                     return glm::vec4(block_position_in_chunk, index);
                 }
             }
