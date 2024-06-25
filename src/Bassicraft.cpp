@@ -68,30 +68,11 @@ Bassicraft::Bassicraft(/* args */)
             glfwGetFramebufferSize(engine.window, &width, &height);
             glfwWaitEvents();
         }
-        // if (glfwGetKey(engine.window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        //     glfwSetWindowShouldClose(engine.window, GLFW_TRUE);
-        // }
-        // if (glfwGetKey(engine.window, GLFW_KEY_KP_6) == GLFW_PRESS) {
-        //     if (is_cursor_locked) {
-        //         is_cursor_locked = false;
-        //         glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        //     } else {
-        //         is_cursor_locked = true;
-        //         glfwSetInputMode(engine.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        //     }
-        // }
-        // for (int key = GLFW_KEY_1; key <= GLFW_KEY_9; key++) {
-        //     if (glfwGetKey(engine.window, key) == GLFW_PRESS) {
-        //         inventory.selected_slot = key - GLFW_KEY_1;
-        //         player.selected_item = inventory.hotbar[inventory.selected_slot];
-        //     }
-        // }
 
         bool open = true;
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        //ImGui::ShowDemoWindow(&open);
         ImGui::Begin("Debug", &open, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("Player position: %.1f %.1f %.1f", player.camera.pos.x, player.camera.pos.y, player.camera.pos.z);
@@ -118,21 +99,6 @@ Bassicraft::Bassicraft(/* args */)
         }
         engine.draw_frame(player, world);
     }
-    engine.wait_idle();
-
-    engine.RemoveTexture(&selected_slot_tex);
-    engine.RemoveTexture(&regular_slot_tex);
-    engine.RemoveTexture(&crosshair);
-    engine.RemoveTexture(&blocks_tex);
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplGlfw_Shutdown();
-    ImGui::DestroyContext();
-
-    for (auto& chunk : world) {
-        engine.free_buffers_chunk(chunk);
-    }
-    glfwDestroyWindow(engine.window);
-    glfwTerminate();
 }
 
 void Bassicraft::init_engine()
@@ -452,4 +418,19 @@ void Bassicraft::display_inventory()
 
 Bassicraft::~Bassicraft()
 {
+    engine.wait_idle();
+
+    engine.RemoveTexture(&selected_slot_tex);
+    engine.RemoveTexture(&regular_slot_tex);
+    engine.RemoveTexture(&crosshair);
+    engine.RemoveTexture(&blocks_tex);
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    for (auto& chunk : world) {
+        engine.free_buffers_chunk(chunk);
+    }
+    glfwDestroyWindow(engine.window);
+    glfwTerminate();
 }

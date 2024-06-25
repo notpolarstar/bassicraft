@@ -9,6 +9,10 @@ layout(location = 2) in vec3 position;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    if (texture(texSampler, fragTexCoord).a < 0.1) {
+        discard;
+    }
+
     vec4 fog_color = vec4(0.5, 0.5, 0.5, 1.0);
     float dist = length(position.xyz);
     float fog_factor = smoothstep(80.0, 100.0, dist);
