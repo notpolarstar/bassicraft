@@ -26,6 +26,9 @@ public:
     float lastX;
     float lastY;
 
+    glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+    bool is_jumping = false;
+
     int selected_item = 1;
 
     Player() {
@@ -33,11 +36,11 @@ public:
             .pos = glm::vec3(0.0f, 0.0f, 0.2f),
             .front = glm::vec3(0.0f, 0.0f, -1.0f),
             .up = glm::vec3(0.0f, -1.0f, 0.0f),
-            .right = glm::vec3(1.0f, 0.0f, 0.0f),
+            .right = glm::vec3(-1.0f, 0.0f, 0.0f),
             .worldUp = glm::vec3(0.0f, -1.0f, 0.0f),
             .yaw = -90.0f,
             .pitch = 0.0f,
-            .speed = 0.25f,
+            .speed = 0.05f,
             .speed_turn = 0.1f,
             .sensitivity = 0.1f,
             .fov = 45.0f
@@ -50,24 +53,6 @@ public:
     void processInput(GLFWwindow* window) {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
             glfwSetWindowShouldClose(window, true);
-        }
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            camera.pos += camera.speed * camera.front;
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            camera.pos -= camera.speed * camera.front;
-        }
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            camera.pos -= glm::normalize(glm::cross(camera.front, camera.up)) * camera.speed;
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            camera.pos += glm::normalize(glm::cross(camera.front, camera.up)) * camera.speed;
-        }
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-            camera.pos += camera.speed * camera.up;
-        }
-        if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-            camera.pos -= camera.speed * camera.up;
         }
     }
 

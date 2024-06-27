@@ -13,9 +13,9 @@ void main() {
         discard;
     }
 
-    vec4 fog_color = vec4(0.5, 0.5, 0.5, 1.0);
+    vec4 fog_color = vec4(0.1, 0.25, 1.0, 1.0f);
     float dist = length(position.xyz);
-    float fog_factor = smoothstep(80.0, 100.0, dist);
+    float fog_factor = smoothstep(60.0, 100.0, dist);
     fog_factor = clamp(fog_factor, 0.0, 1.0);
     
     outColor = mix(vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord), fog_color, fog_factor);

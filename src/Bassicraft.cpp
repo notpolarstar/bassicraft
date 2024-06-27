@@ -77,7 +77,13 @@ Bassicraft::Bassicraft(/* args */)
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("Player position: %.1f %.1f %.1f", player.camera.pos.x, player.camera.pos.y, player.camera.pos.z);
         ImGui::Text("Player chunk: %d %d", (int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
-        ImGui::Image((ImTextureID)selected_slot_tex.DS, ImVec2(selected_slot_tex.Width, selected_slot_tex.Height));
+        ImGui::Text("Player chunk position: %.1f %.1f", regular_modulo(player.camera.pos.x, 16), regular_modulo(player.camera.pos.z, 16));
+        ImGui::Text("Player yaw: %.1f", player.camera.yaw);
+        ImGui::Text("Player pitch: %.1f", player.camera.pitch);
+        ImGui::Text("Player selected item: %d", player.selected_item);
+        ImGui::Text("Player selected slot: %d", inventory.selected_slot);
+        ImGui::Text("Player velocity: %.1f %.1f %.1f", player.velocity.x, player.velocity.y, player.velocity.z);
+        ImGui::Text("Player front: %.1f %.1f %.1f", player.camera.front.x, player.camera.front.y, player.camera.front.z);
         ImGui::End();
 
         display_hotbar();
@@ -92,7 +98,7 @@ Bassicraft::Bassicraft(/* args */)
 
         unload_load_new_chunks();
         if (is_cursor_locked) {
-            player.processInput(engine.window);
+            move_player();
             player.mouse_movement(engine.window);
         } else {
             player.update_mouse_pos(engine.window);
@@ -414,6 +420,81 @@ void Bassicraft::display_inventory()
         }
     }
     ImGui::End();
+}
+
+void Bassicraft::move_player()
+{
+    // float offset = -0.5;
+    // player.camera.pos = glm::vec3(player.camera.pos.x + offset, player.camera.pos.y, player.camera.pos.z + offset);
+
+    if (glfwGetKey(engine.window, GLFW_KEY_W) == GLFW_PRESS) {
+        player.velocity.x += player.camera.front.x * player.camera.speed;
+        player.velocity.z += player.camera.front.z * player.camera.speed;
+    }
+    if (glfwGetKey(engine.window, GLFW_KEY_S) == GLFW_PRESS) {
+        player.velocity.x -= player.camera.front.x * player.camera.speed;
+        player.velocity.z -= player.camera.front.z * player.camera.speed;
+    }
+    if (glfwGetKey(engine.window, GLFW_KEY_A) == GLFW_PRESS) {
+        player.velocity.x -= glm::normalize(glm::cross(player.camera.front, player.camera.up)).x * player.camera.speed;
+        player.velocity.z -= glm::normalize(glm::cross(player.camera.front, player.camera.up)).z * player.camera.speed;
+    }
+    if (glfwGetKey(engine.window, GLFW_KEY_D) == GLFW_PRESS) {
+        player.velocity.x += glm::normalize(glm::cross(player.camera.front, player.camera.up)).x * player.camera.speed;
+        player.velocity.z += glm::normalize(glm::cross(player.camera.front, player.camera.up)).z * player.camera.speed;
+    }
+    if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0))) {
+        player.velocity += player.camera.up * 0.2f;
+        player.is_jumping = true;
+    }
+    if (glfwGetKey(engine.window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && !chunk_collision(player.camera.pos + glm::vec3(0, -2, 0)) && !chunk_collision(player.camera.pos + glm::vec3(0, -3, 0)) && player.is_jumping == false) {
+        player.velocity -= player.camera.up * player.camera.speed;
+    }
+    if (chunk_collision(player.camera.pos +  glm::vec3(0, 2, 0)) && player.velocity.y > 0) {
+        player.velocity.y = 0;
+        player.is_jumping = false;
+    }
+    if (!chunk_collision(player.camera.pos + glm::vec3(0, 1.8, 0))) {
+        player.velocity.y += 0.02f;
+        player.velocity.y *= 1.5f;
+        player.is_jumping = true;
+    }
+    if (chunk_collision(player.camera.pos + glm::vec3(0, -0.2, 0)) && player.velocity.y < 0) {
+        player.velocity.y = 0;
+    }
+    if (chunk_collision(player.camera.pos + glm::vec3(player.velocity.x, player.velocity.y + 1, 0)) || chunk_collision(player.camera.pos + glm::vec3(player.velocity.x, player.velocity.y, 0))) {
+        player.velocity.x = 0;
+    }
+    if (chunk_collision(player.camera.pos + glm::vec3(0, player.velocity.y + 1, player.velocity.z)) || chunk_collision(player.camera.pos + glm::vec3(0, player.velocity.y, player.velocity.z))) {
+        player.velocity.z = 0;
+    }
+    player.camera.pos += player.velocity;
+    player.velocity *= 0.6f;
+
+    //player.camera.pos = glm::vec3(player.camera.pos.x - offset, player.camera.pos.y, player.camera.pos.z - offset);
+}
+
+bool Bassicraft::chunk_collision(glm::vec3 pos)
+{
+    glm::vec2 chunk_pos = glm::vec2((int)pos.x / 16, (int)pos.z / 16);
+    glm::ivec3 block_pos = glm::ivec3(regular_modulo(floor(pos.x), 16), floor(pos.y), regular_modulo(floor(pos.z), 16));
+
+    if (pos.x < 0) {
+        chunk_pos.x--;
+    }
+    if (pos.z < 0) {
+        chunk_pos.y--;
+    }
+    for (auto& chunk : world) {
+        if (chunk.pos == chunk_pos) {
+            if (chunk.blocks[block_pos.x][block_pos.y][block_pos.z].type != 0) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 Bassicraft::~Bassicraft()
