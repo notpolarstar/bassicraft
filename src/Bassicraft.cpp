@@ -93,7 +93,7 @@ Bassicraft::Bassicraft(/* args */)
         } else {
             display_crosshair();
         }
-    
+        
         ImGui::Render();
 
         unload_load_new_chunks();
@@ -103,6 +103,9 @@ Bassicraft::Bassicraft(/* args */)
         } else {
             player.update_mouse_pos(engine.window);
         }
+
+        engine.update_particles();
+
         engine.draw_frame(player, world);
     }
 }
@@ -231,6 +234,8 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glm::vec4 pos = get_cube_pointed_at(false);
         if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type != 0) {
+            engine.create_particles(world[pos.w].blocks[pos.x][pos.y][pos.z].pos, world[pos.w].blocks[pos.x][pos.y][pos.z].type, player.camera.yaw);
+            engine.create_particles_buffers();
             remove_cube(world[pos.w], pos, world[pos.w].blocks[pos.x][pos.y][pos.z]);
             engine.recreate_buffers_chunk(world[pos.w]);
         }
@@ -443,8 +448,8 @@ void Bassicraft::move_player()
         player.velocity.x += glm::normalize(glm::cross(player.camera.front, player.camera.up)).x * player.camera.speed;
         player.velocity.z += glm::normalize(glm::cross(player.camera.front, player.camera.up)).z * player.camera.speed;
     }
-    if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0))) {
-        player.velocity += player.camera.up * 0.2f;
+    if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0)) && player.velocity.y == 0) {
+        player.velocity += player.camera.up * 0.5f;
         player.is_jumping = true;
     }
     if (glfwGetKey(engine.window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && !chunk_collision(player.camera.pos + glm::vec3(0, -2, 0)) && !chunk_collision(player.camera.pos + glm::vec3(0, -3, 0)) && player.is_jumping == false) {

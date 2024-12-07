@@ -11,6 +11,7 @@
 #include "Player.hpp"
 #include "Chunk.hpp"
 #include "TextureDataStruct.hpp"
+#include "Particle.hpp"
 
 class VkEngine
 {
@@ -50,46 +51,13 @@ private:
 
     bool framebuffer_resized = false;
 
-    std::vector<Vertex> vertices = {
-        {{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-        {{1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-        {{0.0f, 1.0f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-        {{0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-        {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-        {{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-        {{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-        {{1.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-        {{0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-        {{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-        {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-        {{0.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-        {{1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{1.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-        {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-        {{1.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-        {{0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-        {{0.0f, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-    };
-
-    std::vector<uint32_t> indices = {
-        0, 1, 2, 2, 3, 0,
-        4, 5, 6, 6, 7, 4,
-        8, 9, 10, 10, 11, 8,
-        12, 15, 14, 14, 13, 12,
-        16, 17, 18, 18, 19, 16,
-        20, 23, 22, 22, 21, 20
-    };
+    std::vector<Particle> particles{};
+    std::vector<Vertex> particles_vertices{};
+    std::vector<uint32_t> particles_indices{};
+    VkBuffer vk_particles_vertex_buffer = VK_NULL_HANDLE;
+    VkDeviceMemory vk_particles_vertex_buffer_memory = VK_NULL_HANDLE;
+    VkBuffer vk_particles_index_buffer = VK_NULL_HANDLE;
+    VkDeviceMemory vk_particles_index_buffer_memory = VK_NULL_HANDLE;
 
     VkBuffer vk_uniform_buffer;
     VkDeviceMemory vk_uniform_buffer_memory;
@@ -125,7 +93,7 @@ public:
     void create_graphics_pipeline();
     void create_command_pool();
     void create_command_buffers();
-    void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index, std::vector<Chunk>& world);
+    void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index, std::vector<Chunk>& world, Player& player);
     void create_uniform_buffers();
     void update_uniform_buffer(uint32_t current_image, Camera& camera);
     void create_descriptor_set_layout();
@@ -167,6 +135,10 @@ public:
     void create_inventory();
     bool LoadTextureFromFile(const char* filename, MyTextureData* tex_data);
     void RemoveTexture(MyTextureData* tex_data);
+
+    void create_particles(glm::vec3 pos, uint16_t type, float angle);
+    void create_particles_buffers();
+    void update_particles();
 
     VkEngine();
     ~VkEngine();

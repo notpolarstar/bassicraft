@@ -21,6 +21,7 @@
 #include "Utils.hpp"
 #include "Vertex.hpp"
 #include "UniformBufferObject.hpp"
+#include "Particle.hpp"
 
 VkEngine::VkEngine()
 {
@@ -351,7 +352,7 @@ void VkEngine::create_command_buffers()
     }
 }
 
-void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index, std::vector<Chunk>& world)
+void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index, std::vector<Chunk>& world, Player& player)
 {
     VkCommandBufferBeginInfo begin_info = {};
     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -403,12 +404,25 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
 
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame], 0, nullptr);
     for (auto& chunk : world) {
-        if (chunk.should_be_deleted) {
+        if (chunk.should_be_deleted || glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
             continue;
         }
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &chunk.vk_vertex_buffer, offsets);
         vkCmdBindIndexBuffer(command_buffer, chunk.vk_index_buffer, 0, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(chunk.indices.size()), 1, 0, 0, 0);
+    }
+
+    if (vk_particles_vertex_buffer != VK_NULL_HANDLE) {
+        // UniformBufferObject old_ubo = {};
+        // memcpy(&old_ubo, vk_uniform_buffers_mapped[current_frame], static_cast<size_t>(sizeof(UniformBufferObject)));
+
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame + vk_images.size()], 0, nullptr);
+        vkCmdBindVertexBuffers(command_buffer, 0, 1, &vk_particles_vertex_buffer, offsets);
+        vkCmdBindIndexBuffer(command_buffer, vk_particles_index_buffer, 0, VK_INDEX_TYPE_UINT32);
+
+        vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(particles_indices.size()), 1, 0, 0, 0);
+
+        // memcpy(vk_uniform_buffers_mapped[current_frame], &old_ubo, sizeof(old_ubo));
     }
 
     //Render GUI
@@ -510,7 +524,7 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
 
     vkResetCommandBuffer(vk_command_buffers[current_frame], 0);
 
-    record_command_buffer(vk_command_buffers[current_frame], image_index, world);
+    record_command_buffer(vk_command_buffers[current_frame], image_index, world, player);
 
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -737,11 +751,11 @@ void VkEngine::create_uniform_buffers()
 {
     VkDeviceSize buffer_size = sizeof(UniformBufferObject);
 
-    vk_uniform_buffers.resize(vk_images.size());
-    vk_uniform_buffers_memory.resize(vk_images.size());
-    vk_uniform_buffers_mapped.resize(vk_images.size());
+    vk_uniform_buffers.resize(vk_images.size() * 2);
+    vk_uniform_buffers_memory.resize(vk_images.size() * 2);
+    vk_uniform_buffers_mapped.resize(vk_images.size() * 2);
 
-    for (size_t i = 0; i < vk_images.size(); i++) {
+    for (size_t i = 0; i < vk_images.size() * 2; i++) {
         create_buffer(buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vk_uniform_buffers[i], vk_uniform_buffers_memory[i]);
 
         vkMapMemory(device.device, vk_uniform_buffers_memory[i], 0, buffer_size, 0, &vk_uniform_buffers_mapped[i]);
@@ -762,6 +776,18 @@ void VkEngine::update_uniform_buffer(uint32_t current_image, Camera& camera)
     ubo.proj[1][1] *= -1;
 
     memcpy(vk_uniform_buffers_mapped[current_image], &ubo, sizeof(ubo));
+
+    if (vk_particles_vertex_buffer == VK_NULL_HANDLE) {
+        return;
+    }
+
+    UniformBufferObject ubo_particle = {};
+    ubo_particle.model = glm::mat4(1.0f);
+    ubo_particle.model = glm::translate(ubo_particle.model, particles[particles_indices[0]].offset);
+    ubo_particle.view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
+    ubo_particle.proj = glm::perspective(camera.fov, swapchain.extent.width / (float) swapchain.extent.height, 0.1f, 800.0f);
+    ubo_particle.proj[1][1] *= -1;
+    memcpy(vk_uniform_buffers_mapped[current_frame + vk_images.size()], &ubo_particle, sizeof(ubo_particle));
 }
 
 void VkEngine::create_descriptor_pool()
@@ -812,19 +838,19 @@ void VkEngine::create_descriptor_pool()
 
 void VkEngine::create_descriptor_sets()
 {
-    std::vector<VkDescriptorSetLayout> layouts(vk_images.size(), vk_descriptor_set_layout);
+    std::vector<VkDescriptorSetLayout> layouts(vk_images.size() * 2, vk_descriptor_set_layout);
     VkDescriptorSetAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.descriptorPool = vk_descriptor_pool;
-    alloc_info.descriptorSetCount = static_cast<uint32_t>(vk_images.size());
+    alloc_info.descriptorSetCount = static_cast<uint32_t>(vk_images.size() * 2);
     alloc_info.pSetLayouts = layouts.data();
 
-    vk_descriptor_sets.resize(vk_images.size());
+    vk_descriptor_sets.resize(vk_images.size() * 2);
     if (vkAllocateDescriptorSets(device.device, &alloc_info, vk_descriptor_sets.data()) != VK_SUCCESS) {
         throw std::runtime_error("Could not allocate descriptor sets");
     }
 
-    for (size_t i = 0; i < vk_images.size(); i++) {
+    for (size_t i = 0; i < vk_images.size() * 2; i++) {
         VkDescriptorBufferInfo buffer_info = {};
         buffer_info.buffer = vk_uniform_buffers[i];
         buffer_info.offset = 0;
@@ -1586,6 +1612,107 @@ void VkEngine::create_inventory()
     ImGui_ImplVulkan_Init(&init_info);
 }
 
+void VkEngine::create_particles_buffers()
+{
+        wait_idle();
+    if (vk_particles_vertex_buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device.device, vk_particles_vertex_buffer, nullptr);
+        vkFreeMemory(device.device, vk_particles_vertex_buffer_memory, nullptr);
+        vkDestroyBuffer(device.device, vk_particles_index_buffer, nullptr);
+        vkFreeMemory(device.device, vk_particles_index_buffer_memory, nullptr);
+    }
+
+    VkDeviceSize buffer_size = sizeof(Vertex) * particles_vertices.size();
+
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+
+    void* data;
+    vkMapMemory(device.device, staging_buffer_memory, 0, buffer_size, 0, &data);
+    memcpy(data, particles_vertices.data(), (size_t) buffer_size);
+    vkUnmapMemory(device.device, staging_buffer_memory);
+
+    create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_particles_vertex_buffer, vk_particles_vertex_buffer_memory);
+
+    copy_buffer(staging_buffer, vk_particles_vertex_buffer, buffer_size);
+
+    vkDestroyBuffer(device.device, staging_buffer, nullptr);
+    vkFreeMemory(device.device, staging_buffer_memory, nullptr);
+
+    VkDeviceSize buffer_size_i = sizeof(uint32_t) * particles_indices.size();
+
+    VkBuffer staging_buffer_i;
+    VkDeviceMemory staging_buffer_memory_i;
+    create_buffer(buffer_size_i, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer_i, staging_buffer_memory_i);
+
+    void* data_i;
+    vkMapMemory(device.device, staging_buffer_memory_i, 0, buffer_size_i, 0, &data_i);
+    memcpy(data_i, particles_indices.data(), (size_t) buffer_size_i);
+    vkUnmapMemory(device.device, staging_buffer_memory_i);
+
+    create_buffer(buffer_size_i, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_particles_index_buffer, vk_particles_index_buffer_memory);
+
+    copy_buffer(staging_buffer_i, vk_particles_index_buffer, buffer_size_i);
+
+    vkDestroyBuffer(device.device, staging_buffer_i, nullptr);
+    vkFreeMemory(device.device, staging_buffer_memory_i, nullptr);
+}
+
+void VkEngine::create_particles(glm::vec3 pos, uint16_t type, float angle)
+{
+    std::array<Particle, 4> parts{
+        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0},
+        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0},
+        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0},
+        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0}
+    };
+
+    float tex_x = fmodf((type - 1), 16.0f) / 16.0f;
+    float tex_y = floor((type - 1) / 16.0f) / 16.0f;
+    float offset = 1.0f / 16.0f;
+
+    // tex_x = 0.0f;
+    // tex_y = 0.0f;
+
+    for (auto& part : parts) {
+        particles.push_back(part);
+    
+        particles_vertices.push_back({{part.position.x, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y}, pos});
+        particles_vertices.push_back({{part.position.x + part.size, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y}, pos});
+        particles_vertices.push_back({{part.position.x + part.size, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y + offset}, pos});
+        particles_vertices.push_back({{part.position.x, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y + offset}, pos});
+
+        size_t len = particles_vertices.size();
+        particles_indices.push_back(len - 4);
+        particles_indices.push_back(len - 1);
+        particles_indices.push_back(len - 2);
+        particles_indices.push_back(len - 2);
+        particles_indices.push_back(len - 3);
+        particles_indices.push_back(len - 4);
+    }
+}
+
+void VkEngine::update_particles()
+{
+    int index = 0;
+
+    for (auto& particle : particles) {
+        particle.offset += particle.velocity;
+        particle.velocity.y *= 1.01f;
+        particle.life += 0.01f;
+        if (particle.life > 0.5f) {
+            particles_indices.erase(particles_indices.begin() + index * 6, particles_indices.begin() + index * 6 + 6);
+            particles_vertices.erase(particles_vertices.begin() + index * 4, particles_vertices.begin() + index * 4 + 4);
+            particles.erase(particles.begin() + index);
+            if (particles.size() > 0) {
+                create_particles_buffers();
+            }
+        }
+        index++;
+    }
+}
+
 void VkEngine::wait_idle()
 {
     vkDeviceWaitIdle(device.device);
@@ -1594,6 +1721,13 @@ void VkEngine::wait_idle()
 VkEngine::~VkEngine()
 {
     wait_idle();
+
+    if (vk_particles_vertex_buffer != VK_NULL_HANDLE) {
+        vkDestroyBuffer(device.device, vk_particles_vertex_buffer, nullptr);
+        vkFreeMemory(device.device, vk_particles_vertex_buffer_memory, nullptr);
+        vkDestroyBuffer(device.device, vk_particles_index_buffer, nullptr);
+        vkFreeMemory(device.device, vk_particles_index_buffer_memory, nullptr);
+    }
 
     vkDestroyImageView(device.device, vk_depth_image_view, nullptr);
     vkDestroyImage(device.device, vk_depth_image, nullptr);
@@ -1604,19 +1738,19 @@ VkEngine::~VkEngine()
     vkDestroyImage(device.device, vk_texture_image, nullptr);
     vkFreeMemory(device.device, vk_texture_image_memory, nullptr);
 
-    for (size_t i = 0; i < vk_images.size(); i++) {
+    for (size_t i = 0; i < vk_images.size() * 2; i++) {
         vkUnmapMemory(device.device, vk_uniform_buffers_memory[i]);
     }
 
     vkDestroyDescriptorPool(device.device, vk_descriptor_pool, nullptr);
 
-    for (size_t i = 0; i < vk_images.size(); i++) {
+    for (size_t i = 0; i < vk_images.size() * 2; i++) {
         vkDestroyBuffer(device.device, vk_uniform_buffers[i], nullptr);
         vkFreeMemory(device.device, vk_uniform_buffers_memory[i], nullptr);
     }
 
     vkDestroyDescriptorSetLayout(device.device, vk_descriptor_set_layout, nullptr);
-
+    
     // vkDestroyBuffer(device.device, vk_vertex_buffer, nullptr);
     // vkFreeMemory(device.device, vk_vertex_buffer_memory, nullptr);
     // vkDestroyBuffer(device.device, vk_index_buffer, nullptr);

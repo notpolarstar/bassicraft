@@ -42,3 +42,9 @@ int regular_modulo(int a, int b)
 {
     return (a % b + b) % b;
 }
+
+float rand_float(float smallNumber, float bigNumber)
+{
+    float diff = bigNumber - smallNumber;
+    return (((float) rand() / RAND_MAX) * diff) + smallNumber;
+}
