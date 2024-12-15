@@ -121,7 +121,7 @@ void Bassicraft::init_engine()
     engine.get_queues();
     engine.create_render_pass();
     engine.create_descriptor_set_layout();
-    engine.create_graphics_pipeline();
+    engine.create_all_graphics_pipelines();
     engine.create_command_pool();
     engine.create_depth_resources();
     engine.create_framebuffers();

@@ -192,10 +192,16 @@ void VkEngine::create_framebuffers()
     }
 }
 
-void VkEngine::create_graphics_pipeline()
+void VkEngine::create_all_graphics_pipelines()
 {
-    auto vert_shader_code = read_file("shaders/blocks_vert.spv");
-    auto frag_shader_code = read_file("shaders/blocks_frag.spv");
+    create_graphics_pipeline(vk_graphics_pipeline, vk_pipeline_layout, "shaders/blocks_vert.spv", "shaders/blocks_frag.spv");
+    create_graphics_pipeline(vk_particles_graphics_pipeline, vk_particles_pipeline_layout, "shaders/particles_vert.spv", "shaders/particles_frag.spv");
+}
+
+void VkEngine::create_graphics_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path)
+{
+    auto vert_shader_code = read_file(vert_path);
+    auto frag_shader_code = read_file(frag_path);
 
     VkShaderModule vert_shader_module = create_shader_module(vert_shader_code, device.device);
     VkShaderModule frag_shader_module = create_shader_module(frag_shader_code, device.device);
@@ -279,7 +285,7 @@ void VkEngine::create_graphics_pipeline()
     pipeline_layout_info.pushConstantRangeCount = 0;
     pipeline_layout_info.pPushConstantRanges = nullptr;
     
-    if (vkCreatePipelineLayout(device.device, &pipeline_layout_info, nullptr, &vk_pipeline_layout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(device.device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
         throw std::runtime_error("Could not create pipeline layout");
     }
     
@@ -318,7 +324,7 @@ void VkEngine::create_graphics_pipeline()
     pipeline_info.subpass = 0;
     pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
 
-    if (vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &vk_graphics_pipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
         throw std::runtime_error("Could not create graphics pipeline");
     }
 
@@ -340,7 +346,7 @@ void VkEngine::create_command_pool()
 
 void VkEngine::create_command_buffers()
 {
-    vk_command_buffers.resize(MAX_FRAMES_IN_FLIGHT);
+    vk_command_buffers_blocks.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkCommandBufferAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -348,7 +354,7 @@ void VkEngine::create_command_buffers()
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     alloc_info.commandBufferCount = (uint32_t) MAX_FRAMES_IN_FLIGHT;
 
-    if (vkAllocateCommandBuffers(device.device, &alloc_info, vk_command_buffers.data()) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(device.device, &alloc_info, vk_command_buffers_blocks.data()) != VK_SUCCESS) {
         throw std::runtime_error("Could not allocate command buffers");
     }
 }
@@ -417,6 +423,7 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
         // UniformBufferObject old_ubo = {};
         // memcpy(&old_ubo, vk_uniform_buffers_mapped[current_frame], static_cast<size_t>(sizeof(UniformBufferObject)));
 
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_particles_graphics_pipeline);
         vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame + vk_images.size()], 0, nullptr);
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &vk_particles_vertex_buffer, offsets);
         vkCmdBindIndexBuffer(command_buffer, vk_particles_index_buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -427,7 +434,7 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
     }
 
     //Render GUI
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), vk_command_buffers[current_frame]);
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), vk_command_buffers_blocks[current_frame]);
 
     vkCmdEndRenderPass(command_buffer);
 
@@ -482,7 +489,8 @@ void VkEngine::recreate_swapchain()
     get_queues();
     create_render_pass();
     create_framebuffers();
-    create_graphics_pipeline();
+    create_graphics_pipeline(vk_graphics_pipeline, vk_pipeline_layout, "shaders/blocks_vert.spv", "shaders/blocks_frag.spv");
+    create_graphics_pipeline(vk_particles_graphics_pipeline, vk_particles_pipeline_layout, "shaders/particles_vert.spv", "shaders/particles_frag.spv");
     create_command_pool();
     create_command_buffers();
 }
@@ -521,9 +529,9 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
 
     vkResetFences(device.device, 1, &vk_in_flight_fences[current_frame]);
 
-    vkResetCommandBuffer(vk_command_buffers[current_frame], 0);
+    vkResetCommandBuffer(vk_command_buffers_blocks[current_frame], 0);
 
-    record_command_buffer(vk_command_buffers[current_frame], image_index, world, player);
+    record_command_buffer(vk_command_buffers_blocks[current_frame], image_index, world, player);
 
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -535,7 +543,7 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
     submit_info.pWaitDstStageMask = wait_stages;
 
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &vk_command_buffers[current_frame];
+    submit_info.pCommandBuffers = &vk_command_buffers_blocks[current_frame];
 
     VkSemaphore signal_semaphores[] = {vk_render_finished_semaphores[current_frame]};
     submit_info.signalSemaphoreCount = 1;
@@ -750,14 +758,20 @@ void VkEngine::create_uniform_buffers()
 {
     VkDeviceSize buffer_size = sizeof(UniformBufferObject);
 
-    vk_uniform_buffers.resize(vk_images.size() * 2);
+    vk_uniform_buffers_blocks.resize(vk_images.size());
+    vk_uniform_buffers_particles.resize(vk_images.size());
     vk_uniform_buffers_memory.resize(vk_images.size() * 2);
     vk_uniform_buffers_mapped.resize(vk_images.size() * 2);
 
-    for (size_t i = 0; i < vk_images.size() * 2; i++) {
-        create_buffer(buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vk_uniform_buffers[i], vk_uniform_buffers_memory[i]);
+    for (size_t i = 0; i < vk_images.size(); i++) {
+        create_buffer(buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vk_uniform_buffers_blocks[i], vk_uniform_buffers_memory[i]);
 
         vkMapMemory(device.device, vk_uniform_buffers_memory[i], 0, buffer_size, 0, &vk_uniform_buffers_mapped[i]);
+    }
+    for (size_t i = 0; i < vk_images.size(); i++) {
+        create_buffer(buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vk_uniform_buffers_particles[i], vk_uniform_buffers_memory[i + vk_images.size()]);
+
+        vkMapMemory(device.device, vk_uniform_buffers_memory[i + vk_images.size()], 0, buffer_size, 0, &vk_uniform_buffers_mapped[i + vk_images.size()]);
     }
 }
 
@@ -851,7 +865,11 @@ void VkEngine::create_descriptor_sets()
 
     for (size_t i = 0; i < vk_images.size() * 2; i++) {
         VkDescriptorBufferInfo buffer_info = {};
-        buffer_info.buffer = vk_uniform_buffers[i];
+        if (i < vk_images.size()) {
+            buffer_info.buffer = vk_uniform_buffers_blocks[i];
+        } else {
+            buffer_info.buffer = vk_uniform_buffers_particles[i - vk_images.size()];
+        }
         buffer_info.offset = 0;
         buffer_info.range = sizeof(UniformBufferObject);
 
@@ -1743,9 +1761,13 @@ VkEngine::~VkEngine()
 
     vkDestroyDescriptorPool(device.device, vk_descriptor_pool, nullptr);
 
-    for (size_t i = 0; i < vk_images.size() * 2; i++) {
-        vkDestroyBuffer(device.device, vk_uniform_buffers[i], nullptr);
+    for (size_t i = 0; i < vk_images.size(); i++) {
+        vkDestroyBuffer(device.device, vk_uniform_buffers_blocks[i], nullptr);
         vkFreeMemory(device.device, vk_uniform_buffers_memory[i], nullptr);
+    }
+    for (size_t i = 0; i < vk_images.size(); i++) {
+        vkDestroyBuffer(device.device, vk_uniform_buffers_particles[i], nullptr);
+        vkFreeMemory(device.device, vk_uniform_buffers_memory[i + vk_images.size()], nullptr);
     }
 
     vkDestroyDescriptorSetLayout(device.device, vk_descriptor_set_layout, nullptr);
@@ -1765,6 +1787,8 @@ VkEngine::~VkEngine()
 
     vkDestroyPipeline(device.device, vk_graphics_pipeline, nullptr);
     vkDestroyPipelineLayout(device.device, vk_pipeline_layout, nullptr);
+    vkDestroyPipeline(device.device, vk_particles_graphics_pipeline, nullptr);
+    vkDestroyPipelineLayout(device.device, vk_particles_pipeline_layout, nullptr);
 
     vkDestroyRenderPass(device.device, vk_render_pass, nullptr);
     for (auto framebuffer : vk_framebuffers) {

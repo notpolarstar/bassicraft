@@ -34,9 +34,11 @@ private:
 
     VkPipelineLayout vk_pipeline_layout;
     VkPipeline vk_graphics_pipeline;
+    VkPipelineLayout vk_particles_pipeline_layout;
+    VkPipeline vk_particles_graphics_pipeline;
 
     VkCommandPool vk_command_pool;
-    std::vector<VkCommandBuffer> vk_command_buffers;
+    std::vector<VkCommandBuffer> vk_command_buffers_blocks;
 
     std::vector<VkSemaphore> vk_image_available_semaphores;
     std::vector<VkSemaphore> vk_render_finished_semaphores;
@@ -61,7 +63,8 @@ private:
 
     VkBuffer vk_uniform_buffer;
     VkDeviceMemory vk_uniform_buffer_memory;
-    std::vector<VkBuffer> vk_uniform_buffers;
+    std::vector<VkBuffer> vk_uniform_buffers_blocks;
+    std::vector<VkBuffer> vk_uniform_buffers_particles;
     std::vector<VkDeviceMemory> vk_uniform_buffers_memory;
     std::vector<void *> vk_uniform_buffers_mapped;
 
@@ -91,7 +94,8 @@ public:
     void create_framebuffers();
     void create_vertex_buffer();
     void create_index_buffer();
-    void create_graphics_pipeline();
+    void create_all_graphics_pipelines();
+    void create_graphics_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path);
     void create_command_pool();
     void create_command_buffers();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index, std::vector<Chunk>& world, Player& player);

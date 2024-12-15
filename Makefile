@@ -42,6 +42,8 @@ debug:	$(NAME)
 shaders:
 		glslc shaders/blocks_shader.vert -o shaders/blocks_vert.spv
 		glslc shaders/blocks_shader.frag -o shaders/blocks_frag.spv
+		glslc shaders/particles_shader.vert -o shaders/particles_vert.spv
+		glslc shaders/particles_shader.frag -o shaders/particles_frag.spv
 
 clean:
 		rm -f $(OBJ)
