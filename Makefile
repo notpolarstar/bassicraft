@@ -33,11 +33,15 @@ CC	=	g++
 
 all: $(NAME)
 
-$(NAME):	$(OBJ)
+$(NAME):	$(OBJ)	shaders
 		$(CC) -o $(NAME) $(OBJ) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
 
 debug:	CFLAGS += -g3 -fsanitize=address
 debug:	$(NAME)
+
+shaders:
+		glslc shaders/blocks_shader.vert -o shaders/blocks_vert.spv
+		glslc shaders/blocks_shader.frag -o shaders/blocks_frag.spv
 
 clean:
 		rm -f $(OBJ)
@@ -52,4 +56,4 @@ re:		fclean all
 
 fresh:	fclean	$(NAME)
 
-.PHONY: all clean fclean re tests fresh
+.PHONY: all clean fclean re tests fresh shaders

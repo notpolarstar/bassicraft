@@ -194,8 +194,8 @@ void VkEngine::create_framebuffers()
 
 void VkEngine::create_graphics_pipeline()
 {
-    auto vert_shader_code = read_file("shaders/vert.spv");
-    auto frag_shader_code = read_file("shaders/frag.spv");
+    auto vert_shader_code = read_file("shaders/blocks_vert.spv");
+    auto frag_shader_code = read_file("shaders/blocks_frag.spv");
 
     VkShaderModule vert_shader_module = create_shader_module(vert_shader_code, device.device);
     VkShaderModule frag_shader_module = create_shader_module(frag_shader_code, device.device);
