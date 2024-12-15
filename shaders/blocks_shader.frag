@@ -13,21 +13,12 @@ void main() {
         discard;
     }
 
-    vec4 fog_color = vec4(0.1, 0.25, 1.0, 1.0f);
-    float dist = length(position.xyz);
-    float fog_factor = smoothstep(60.0, 100.0, dist);
-    fog_factor = clamp(fog_factor, 0.0, 1.0);
+    // vec4 fog_color = vec4(0.1, 0.25, 1.0, 1.0f);
+    // float dist = length(position.xyz);
+    // float fog_factor = smoothstep(60.0, 100.0, dist);
+    // fog_factor = clamp(fog_factor, 0.0, 1.0);
     
-    outColor = mix(vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord), fog_color, fog_factor);
+    //outColor = mix(vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord), fog_color, fog_factor);
 
-    //outColor = vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord);
+    outColor = vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord);
 }
-
-// #version 450
-// #extension GL_ARB_separate_shader_objects : enable
-
-// layout (location = 0) in vec3 fragColor;
-
-// layout (location = 0) out vec4 outColor;
-
-// void main () { outColor = vec4 (fragColor, 1.0); }

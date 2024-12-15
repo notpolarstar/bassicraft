@@ -1,6 +1,7 @@
 #include <random>
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
 #include <glm/glm.hpp>
 
@@ -20,7 +21,8 @@ Bassicraft::Bassicraft(/* args */)
     srand(time(NULL));
 
     noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-    noise.SetSeed(rand());
+    //noise.SetSeed(rand());
+    noise.SetSeed(0);
     noise.SetFrequency(0.01f);
     noise.SetFractalType(FastNoiseLite::FractalType_FBm);
     noise.SetFractalOctaves(3);
@@ -60,6 +62,7 @@ Bassicraft::Bassicraft(/* args */)
     });
 
     while (!glfwWindowShouldClose(engine.window)) {
+        auto time_point = std::chrono::high_resolution_clock::now();
         glfwPollEvents();
         ImGui_ImplGlfw_MouseButtonCallback(engine.window, 0, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS);
 
@@ -75,6 +78,7 @@ Bassicraft::Bassicraft(/* args */)
         ImGui::NewFrame();
         ImGui::Begin("Debug", &open, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("Frame Time: %.1f ms", engine.frame_render_duration);
         ImGui::Text("Player position: %.1f %.1f %.1f", player.camera.pos.x, player.camera.pos.y, player.camera.pos.z);
         ImGui::Text("Player chunk: %d %d", (int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
         ImGui::Text("Player chunk position: %.1f %.1f", regular_modulo(player.camera.pos.x, 16), regular_modulo(player.camera.pos.z, 16));
@@ -107,6 +111,7 @@ Bassicraft::Bassicraft(/* args */)
         engine.update_particles();
 
         engine.draw_frame(player, world);
+        engine.frame_render_duration = std::chrono::duration<float, std::chrono::milliseconds::period>(std::chrono::high_resolution_clock::now() - time_point).count();
     }
 }
 

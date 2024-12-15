@@ -491,6 +491,22 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
 {
     vkWaitForFences(device.device, 1, &vk_in_flight_fences[current_frame], VK_TRUE, UINT64_MAX);
 
+    int p = 0;
+    for (auto& chunk : world) {
+        if (chunk.should_be_deleted && p < world.size() - 1) {
+            vkWaitForFences(device.device, MAX_FRAMES_IN_FLIGHT, vk_in_flight_fences.data(), VK_TRUE, UINT64_MAX);
+            vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
+            vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
+            vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
+            vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+            if (&chunk != &world.back()) {
+                chunk = world.back();
+            }
+            world.pop_back();
+        }
+        p++;
+    }
+
     uint32_t image_index;
     VkResult result = vkAcquireNextImageKHR(device.device, swapchain.swapchain, UINT64_MAX, vk_image_available_semaphores[current_frame], VK_NULL_HANDLE, &image_index);
 
@@ -502,24 +518,6 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
     }
 
     update_uniform_buffer(current_frame, player.camera);
-
-    if (current_frame == 0) {
-        int p = 0;
-        for (auto& chunk : world) {
-            if (chunk.should_be_deleted && p < world.size() - 1) {
-                wait_idle();
-                vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
-                vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
-                vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
-                vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
-                if (&chunk != &world.back()) {
-                    chunk = world.back();
-                }
-                world.pop_back();
-            }
-            p++;
-        }
-    }
 
     vkResetFences(device.device, 1, &vk_in_flight_fences[current_frame]);
 
