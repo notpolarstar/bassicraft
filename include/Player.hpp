@@ -84,8 +84,8 @@ public:
         }
 
         glm::vec3 front;
-        front.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-        front.y = sin(glm::radians(camera.pitch));
+        front.x = cos(glm::radians(camera.yaw)) * -cos(glm::radians(camera.pitch));
+        front.y = sin(glm::radians(-camera.pitch));
         front.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
         camera.front = glm::normalize(front);
     }
