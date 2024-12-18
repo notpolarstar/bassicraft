@@ -270,8 +270,8 @@ void VkEngine::create_graphics_pipeline(VkPipeline& pipeline, VkPipelineLayout& 
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     //rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
     rasterizer.lineWidth = 1.0f;
-    //rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterizer.cullMode = VK_CULL_MODE_NONE;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    //rasterizer.cullMode = VK_CULL_MODE_NONE;
     rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -455,20 +455,20 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &vk_particles_vertex_buffer, offsets);
         vkCmdBindIndexBuffer(command_buffer, vk_particles_index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
+        int i = 0;
         for (auto& particle : particles) {
             UniformBufferObject ubo_particle = {};
             ubo_particle.model = glm::translate(glm::mat4(1.0f), particle.position);
-            // ubo_particle.model = glm::translate(ubo_particle.model, particle.offset);
+            ubo_particle.model = glm::translate(ubo_particle.model, particle.offset);
             ubo_particle.view = glm::lookAt(player.camera.pos, player.camera.pos + player.camera.front, player.camera.up);
-            // std::cout << "View Matrix:\n" << ubo_particle.view[0][0] << " " << ubo_particle.view[0][1] << " " << ubo_particle.view[0][2] << " " << ubo_particle.view[0][3] << std::endl;
-            // std::cout << ubo_particle.view[1][0] << " " << ubo_particle.view[1][1] << " " << ubo_particle.view[1][2] << " " << ubo_particle.view[1][3] << std::endl;
-            // std::cout << ubo_particle.view[2][0] << " " << ubo_particle.view[2][1] << " " << ubo_particle.view[2][2] << " " << ubo_particle.view[2][3] << std::endl;
-            // std::cout << ubo_particle.view[3][0] << " " << ubo_particle.view[3][1] << " " << ubo_particle.view[3][2] << " " << ubo_particle.view[3][3] << std::endl;
             ubo_particle.proj = glm::perspective(player.camera.fov, swapchain.extent.width / (float) swapchain.extent.height, 0.1f, 800.0f);
             ubo_particle.proj[1][1] *= -1;
-            memcpy(vk_uniform_buffers_mapped[current_frame + vk_images.size()], &ubo_particle, sizeof(ubo_particle));
+            for (int j = 0; j < MAX_FRAMES_IN_FLIGHT; j++) {
+                memcpy(vk_uniform_buffers_mapped[j + vk_images.size()], &ubo_particle, sizeof(ubo_particle));
+            }
 
-            vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(particles_indices.size()), 1, 0, 0, 0);
+            vkCmdDrawIndexed(command_buffer, 6, 1, (i > 0) ? i * 4 - 1 : 0, (i > 0) ? i * 6 - 1 : 0, 0);            
+            i++;
         }
 
         // memcpy(vk_uniform_buffers_mapped[current_frame], &old_ubo, sizeof(old_ubo));
@@ -1755,10 +1755,10 @@ void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
 
         size_t len = particles_vertices.size();
         particles_indices.push_back(len - 4);
-        particles_indices.push_back(len - 1);
-        particles_indices.push_back(len - 2);
-        particles_indices.push_back(len - 2);
         particles_indices.push_back(len - 3);
+        particles_indices.push_back(len - 2);
+        particles_indices.push_back(len - 2);
+        particles_indices.push_back(len - 1);
         particles_indices.push_back(len - 4);
     }
 }
