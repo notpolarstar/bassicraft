@@ -261,7 +261,7 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
         glm::vec4 pos = get_cube_pointed_at(false);
         if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type != 0) {
-            engine.create_particles(world[pos.w].blocks[pos.x][pos.y][pos.z].pos, world[pos.w].blocks[pos.x][pos.y][pos.z].type, player.camera.yaw);
+            engine.create_particles(world[pos.w].blocks[pos.x][pos.y][pos.z].pos, world[pos.w].blocks[pos.x][pos.y][pos.z].type, player);
             engine.create_particles_buffers();
             remove_cube(world[pos.w], pos, world[pos.w].blocks[pos.x][pos.y][pos.z]);
             engine.recreate_buffers_chunk(world[pos.w]);

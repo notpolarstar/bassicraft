@@ -95,7 +95,7 @@ public:
     void create_vertex_buffer();
     void create_index_buffer();
     void create_all_graphics_pipelines();
-    void create_graphics_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path);
+    void create_graphics_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path, const char* geom_path = nullptr);
     void create_command_pool();
     void create_command_buffers();
     void record_command_buffer(VkCommandBuffer command_buffer, uint32_t image_index, std::vector<Chunk>& world, Player& player);
@@ -141,7 +141,7 @@ public:
     bool LoadTextureFromFile(const char* filename, MyTextureData* tex_data);
     void RemoveTexture(MyTextureData* tex_data);
 
-    void create_particles(glm::vec3 pos, uint16_t type, float angle);
+    void create_particles(glm::vec3 pos, uint16_t type, Player& player);
     void create_particles_buffers();
     void update_particles();
 
