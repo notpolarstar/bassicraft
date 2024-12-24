@@ -21,6 +21,7 @@
 #include "Utils.hpp"
 #include "Vertex.hpp"
 #include "UniformBufferObject.hpp"
+#include "InstanceData.hpp"
 #include "Particle.hpp"
 
 VkEngine::VkEngine()
@@ -86,6 +87,8 @@ void VkEngine::create_swapchain()
     vkb::SwapchainBuilder swapchain_builder{device};
     auto swapchain_ret = swapchain_builder.use_default_format_selection()
                             .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                            // To remove VSYNC, uncomment the line below and comment the line above
+                            //.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)
                             .set_desired_extent(width, height)
                             .set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
                             .build();
@@ -196,7 +199,168 @@ void VkEngine::create_framebuffers()
 void VkEngine::create_all_graphics_pipelines()
 {
     create_graphics_pipeline(vk_graphics_pipeline, vk_pipeline_layout, "shaders/blocks_vert.spv", "shaders/blocks_frag.spv");
-    create_graphics_pipeline(vk_particles_graphics_pipeline, vk_particles_pipeline_layout, "shaders/particles_vert.spv", "shaders/particles_frag.spv");
+    create_graphics_pipeline_particles(vk_particles_graphics_pipeline, vk_particles_pipeline_layout, "shaders/particles_vert.spv", "shaders/particles_frag.spv");
+}
+
+void VkEngine::create_graphics_pipeline_particles(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path, const char* geom_path)
+{
+    auto vert_shader_code = read_file(vert_path);
+    auto frag_shader_code = read_file(frag_path);
+    std::vector<char> geom_shader_code;
+    if (geom_path) {
+        geom_shader_code = read_file(geom_path);
+    }
+
+    VkShaderModule vert_shader_module = create_shader_module(vert_shader_code, device.device);
+    VkShaderModule frag_shader_module = create_shader_module(frag_shader_code, device.device);
+    VkShaderModule geom_shader_module;
+    if (geom_path) {
+        geom_shader_module = create_shader_module(geom_shader_code, device.device);
+    }
+
+    VkPipelineShaderStageCreateInfo vert_shader_stage_info = {};
+    vert_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vert_shader_stage_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vert_shader_stage_info.module = vert_shader_module;
+    vert_shader_stage_info.pName = "main";
+
+    VkPipelineShaderStageCreateInfo frag_shader_stage_info = {};
+    frag_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    frag_shader_stage_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    frag_shader_stage_info.module = frag_shader_module;
+    frag_shader_stage_info.pName = "main";
+
+    VkPipelineShaderStageCreateInfo geom_shader_stage_info = {};
+    if (geom_path) {
+        geom_shader_stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        geom_shader_stage_info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+        geom_shader_stage_info.module = geom_shader_module;
+        geom_shader_stage_info.pName = "main";
+    }
+
+    VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info, frag_shader_stage_info};
+    if (geom_path) {
+        VkPipelineShaderStageCreateInfo shader_stages[] = {vert_shader_stage_info, frag_shader_stage_info, geom_shader_stage_info};
+    }
+
+    // auto binding_description = Vertex::get_binding_description();
+    // auto attribute_descriptions = Vertex::get_attribute_descriptions();
+    std::array<VkVertexInputBindingDescription, 2> binding_descriptions = {Vertex::get_binding_description(), ParticleInstanceData::get_binding_description()};
+    std::array<VkVertexInputAttributeDescription, 6> attribute_descriptions = {Vertex::get_attribute_descriptions()[0], Vertex::get_attribute_descriptions()[1], Vertex::get_attribute_descriptions()[2], ParticleInstanceData::get_attribute_descriptions()[0], ParticleInstanceData::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[2]};
+
+    VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
+    vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertex_input_info.vertexBindingDescriptionCount = 2;
+    vertex_input_info.pVertexBindingDescriptions = binding_descriptions.data();
+    vertex_input_info.vertexAttributeDescriptionCount = static_cast<uint32_t>(attribute_descriptions.size());
+    vertex_input_info.pVertexAttributeDescriptions = attribute_descriptions.data();
+
+    VkPipelineInputAssemblyStateCreateInfo input_assembly = {};
+    input_assembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    input_assembly.primitiveRestartEnable = VK_FALSE;
+    // if (geom_path) {
+    //     input_assembly.topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    // }
+
+    VkPipelineViewportStateCreateInfo viewport_state = {};
+    viewport_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_state.viewportCount = 1;
+    viewport_state.scissorCount = 1;
+
+    VkPipelineRasterizationStateCreateInfo rasterizer = {};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    //rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    //rasterizer.cullMode = VK_CULL_MODE_NONE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+
+    VkPipelineMultisampleStateCreateInfo multisampling = {};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+    color_blend_attachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    color_blend_attachment.blendEnable = VK_TRUE;
+    color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+    color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    color_blend_attachment.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
+
+    VkPipelineColorBlendStateCreateInfo color_blending = {};
+    color_blending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blending.logicOpEnable = VK_FALSE;
+    color_blending.logicOp = VK_LOGIC_OP_COPY;
+    color_blending.attachmentCount = 1;
+    color_blending.pAttachments = &color_blend_attachment;
+    color_blending.blendConstants[0] = 0.0f;
+    color_blending.blendConstants[1] = 0.0f;
+    color_blending.blendConstants[2] = 0.0f;
+    color_blending.blendConstants[3] = 0.0f;
+    
+    VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_info.setLayoutCount = 1;
+    pipeline_layout_info.pSetLayouts = &vk_descriptor_set_layout;
+    pipeline_layout_info.pushConstantRangeCount = 0;
+    pipeline_layout_info.pPushConstantRanges = nullptr;
+    
+    if (vkCreatePipelineLayout(device.device, &pipeline_layout_info, nullptr, &pipeline_layout) != VK_SUCCESS) {
+        throw std::runtime_error("Could not create pipeline layout");
+    }
+    
+    std::vector<VkDynamicState> dynamic_states = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    VkPipelineDynamicStateCreateInfo dynamic_state_info = {};
+    dynamic_state_info.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamic_state_info.dynamicStateCount = static_cast<uint32_t>(dynamic_states.size());
+    dynamic_state_info.pDynamicStates = dynamic_states.data();
+
+    VkPipelineDepthStencilStateCreateInfo depth_stencil = {};
+    depth_stencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depth_stencil.depthTestEnable = VK_TRUE;
+    depth_stencil.depthWriteEnable = VK_TRUE;
+    depth_stencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depth_stencil.depthBoundsTestEnable = VK_FALSE;
+    depth_stencil.minDepthBounds = 0.0f;
+    depth_stencil.maxDepthBounds = 1.0f;
+    depth_stencil.stencilTestEnable = VK_FALSE;
+    depth_stencil.front = {};
+    depth_stencil.back = {};
+
+    VkGraphicsPipelineCreateInfo pipeline_info = {};
+    pipeline_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipeline_info.stageCount = (geom_path) ? 3 : 2;
+    pipeline_info.pStages = shader_stages;
+    pipeline_info.pVertexInputState = &vertex_input_info;
+    pipeline_info.pInputAssemblyState = &input_assembly;
+    pipeline_info.pViewportState = &viewport_state;
+    pipeline_info.pRasterizationState = &rasterizer;
+    pipeline_info.pMultisampleState = &multisampling;
+    pipeline_info.pColorBlendState = &color_blending;
+    pipeline_info.pDynamicState = &dynamic_state_info;
+    pipeline_info.pDepthStencilState = &depth_stencil;
+    pipeline_info.layout = vk_pipeline_layout;
+    pipeline_info.renderPass = vk_render_pass;
+    pipeline_info.subpass = 0;
+    pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+
+    if (vkCreateGraphicsPipelines(device.device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline) != VK_SUCCESS) {
+        throw std::runtime_error("Could not create graphics pipeline");
+    }
+
+    vkDestroyShaderModule(device.device, frag_shader_module, nullptr);
+    vkDestroyShaderModule(device.device, vert_shader_module, nullptr);
+    if (geom_path) {
+        vkDestroyShaderModule(device.device, geom_shader_module, nullptr);
+    }
 }
 
 void VkEngine::create_graphics_pipeline(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path, const char* geom_path)
@@ -435,7 +599,7 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
     // vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame], 0, nullptr);
     // vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
-    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame], 0, nullptr);
+    vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets_chunks[current_frame], 0, nullptr);
     for (auto& chunk : world) {
         if (chunk.should_be_deleted || glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
             continue;
@@ -451,25 +615,19 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
 
 
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_particles_graphics_pipeline);
-        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets[current_frame + vk_images.size()], 0, nullptr);
+        vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets_particles[current_frame], 0, nullptr);
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &vk_particles_vertex_buffer, offsets);
         vkCmdBindIndexBuffer(command_buffer, vk_particles_index_buffer, 0, VK_INDEX_TYPE_UINT32);
 
-        int i = 0;
-        for (auto& particle : particles) {
-            UniformBufferObject ubo_particle = {};
-            ubo_particle.model = glm::translate(glm::mat4(1.0f), particle.position);
-            ubo_particle.model = glm::translate(ubo_particle.model, particle.offset);
-            ubo_particle.view = glm::lookAt(player.camera.pos, player.camera.pos + player.camera.front, player.camera.up);
-            ubo_particle.proj = glm::perspective(player.camera.fov, swapchain.extent.width / (float) swapchain.extent.height, 0.1f, 800.0f);
-            ubo_particle.proj[1][1] *= -1;
-            for (int j = 0; j < MAX_FRAMES_IN_FLIGHT; j++) {
-                memcpy(vk_uniform_buffers_mapped[j + vk_images.size()], &ubo_particle, sizeof(ubo_particle));
-            }
+        vkCmdBindVertexBuffers(command_buffer, 1, 1, &vk_particles_instance_buffer, offsets);
 
-            vkCmdDrawIndexed(command_buffer, 6, 1, (i > 0) ? i * 4 - 1 : 0, (i > 0) ? i * 6 - 1 : 0, 0);            
-            i++;
-        }
+        vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(particles_indices.size()), static_cast<uint32_t>(particles.size()), 0, 0, 0);
+        //vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(particles_indices.size()), 1, 0, 0, 0);
+        // int i = 0;
+        // for (auto& particle : particles) {
+        //     vkCmdDrawIndexed(command_buffer, 6, 1, (i > 0) ? i * 4 - 1 : 0, (i > 0) ? i * 6 - 1 : 0, 0);            
+        //     i++;
+        // }
 
         // memcpy(vk_uniform_buffers_mapped[current_frame], &old_ubo, sizeof(old_ubo));
     }
@@ -831,18 +989,15 @@ void VkEngine::update_uniform_buffer(uint32_t current_image, Camera& camera)
 
     memcpy(vk_uniform_buffers_mapped[current_image], &ubo, sizeof(ubo));
 
-    if (vk_particles_vertex_buffer == VK_NULL_HANDLE) {
+    if (vk_particles_vertex_buffer == VK_NULL_HANDLE || particles.size() <= 0) {
         return;
     }
 
     UniformBufferObject ubo_particle = {};
     ubo_particle.model = glm::mat4(1.0f);
-    ubo_particle.model = glm::translate(ubo_particle.model, particles[particles_indices[0]].offset);
+    ubo_particle.model = glm::translate(glm::mat4(1.0f), particles[0].position);
+    ubo_particle.model = glm::translate(ubo_particle.model, particles[0].offset);
     ubo_particle.view = glm::lookAt(camera.pos, camera.pos + camera.front, camera.up);
-    // std::cout << "View Matrix:\n" << ubo_particle.view[0][0] << " " << ubo_particle.view[0][1] << " " << ubo_particle.view[0][2] << " " << ubo_particle.view[0][3] << std::endl;
-    // std::cout << ubo_particle.view[1][0] << " " << ubo_particle.view[1][1] << " " << ubo_particle.view[1][2] << " " << ubo_particle.view[1][3] << std::endl;
-    // std::cout << ubo_particle.view[2][0] << " " << ubo_particle.view[2][1] << " " << ubo_particle.view[2][2] << " " << ubo_particle.view[2][3] << std::endl;
-    // std::cout << ubo_particle.view[3][0] << " " << ubo_particle.view[3][1] << " " << ubo_particle.view[3][2] << " " << ubo_particle.view[3][3] << std::endl;
     ubo_particle.proj = glm::perspective(camera.fov, swapchain.extent.width / (float) swapchain.extent.height, 0.1f, 800.0f);
     ubo_particle.proj[1][1] *= -1;
     memcpy(vk_uniform_buffers_mapped[current_frame + vk_images.size()], &ubo_particle, sizeof(ubo_particle));
@@ -896,25 +1051,25 @@ void VkEngine::create_descriptor_pool()
 
 void VkEngine::create_descriptor_sets()
 {
-    std::vector<VkDescriptorSetLayout> layouts(vk_images.size() * 2, vk_descriptor_set_layout);
+    std::vector<VkDescriptorSetLayout> layouts(vk_images.size(), vk_descriptor_set_layout);
     VkDescriptorSetAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     alloc_info.descriptorPool = vk_descriptor_pool;
-    alloc_info.descriptorSetCount = static_cast<uint32_t>(vk_images.size() * 2);
+    alloc_info.descriptorSetCount = static_cast<uint32_t>(vk_images.size());
     alloc_info.pSetLayouts = layouts.data();
 
-    vk_descriptor_sets.resize(vk_images.size() * 2);
-    if (vkAllocateDescriptorSets(device.device, &alloc_info, vk_descriptor_sets.data()) != VK_SUCCESS) {
+    vk_descriptor_sets_chunks.resize(vk_images.size());
+    vk_descriptor_sets_particles.resize(vk_images.size());
+    if (vkAllocateDescriptorSets(device.device, &alloc_info, vk_descriptor_sets_chunks.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Could not allocate descriptor sets");
+    }
+    if (vkAllocateDescriptorSets(device.device, &alloc_info, vk_descriptor_sets_particles.data()) != VK_SUCCESS) {
         throw std::runtime_error("Could not allocate descriptor sets");
     }
 
-    for (size_t i = 0; i < vk_images.size() * 2; i++) {
+    for (size_t i = 0; i < vk_images.size(); i++) {
         VkDescriptorBufferInfo buffer_info = {};
-        if (i < vk_images.size()) {
-            buffer_info.buffer = vk_uniform_buffers_blocks[i];
-        } else {
-            buffer_info.buffer = vk_uniform_buffers_particles[i - vk_images.size()];
-        }
+        buffer_info.buffer = vk_uniform_buffers_blocks[i];
         buffer_info.offset = 0;
         buffer_info.range = sizeof(UniformBufferObject);
 
@@ -925,7 +1080,7 @@ void VkEngine::create_descriptor_sets()
 
         std::array<VkWriteDescriptorSet, 2> descriptor_writes = {};
         descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_writes[0].dstSet = vk_descriptor_sets[i];
+        descriptor_writes[0].dstSet = vk_descriptor_sets_chunks[i];
         descriptor_writes[0].dstBinding = 0;
         descriptor_writes[0].dstArrayElement = 0;
         descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -933,7 +1088,37 @@ void VkEngine::create_descriptor_sets()
         descriptor_writes[0].pBufferInfo = &buffer_info;
 
         descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptor_writes[1].dstSet = vk_descriptor_sets[i];
+        descriptor_writes[1].dstSet = vk_descriptor_sets_chunks[i];
+        descriptor_writes[1].dstBinding = 1;
+        descriptor_writes[1].dstArrayElement = 0;
+        descriptor_writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptor_writes[1].descriptorCount = 1;
+        descriptor_writes[1].pImageInfo = &image_info;
+
+        vkUpdateDescriptorSets(device.device, static_cast<uint32_t>(descriptor_writes.size()), descriptor_writes.data(), 0, nullptr);
+    }
+    for (size_t i = 0; i < vk_images.size(); i++) {
+        VkDescriptorBufferInfo buffer_info = {};
+        buffer_info.buffer = vk_uniform_buffers_particles[i];
+        buffer_info.offset = 0;
+        buffer_info.range = sizeof(UniformBufferObject);
+
+        VkDescriptorImageInfo image_info = {};
+        image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        image_info.imageView = vk_texture_image_view;
+        image_info.sampler = vk_texture_sampler;
+
+        std::array<VkWriteDescriptorSet, 2> descriptor_writes = {};
+        descriptor_writes[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[0].dstSet = vk_descriptor_sets_particles[i];
+        descriptor_writes[0].dstBinding = 0;
+        descriptor_writes[0].dstArrayElement = 0;
+        descriptor_writes[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptor_writes[0].descriptorCount = 1;
+        descriptor_writes[0].pBufferInfo = &buffer_info;
+
+        descriptor_writes[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptor_writes[1].dstSet = vk_descriptor_sets_particles[i];
         descriptor_writes[1].dstBinding = 1;
         descriptor_writes[1].dstArrayElement = 0;
         descriptor_writes[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1676,13 +1861,30 @@ void VkEngine::create_inventory()
 
 void VkEngine::create_particles_buffers()
 {
-        wait_idle();
+    //     wait_idle();
+    // if (vk_particles_vertex_buffer != VK_NULL_HANDLE) {
+    //     vkDestroyBuffer(device.device, vk_particles_vertex_buffer, nullptr);
+    //     vkFreeMemory(device.device, vk_particles_vertex_buffer_memory, nullptr);
+    //     vkDestroyBuffer(device.device, vk_particles_index_buffer, nullptr);
+    //     vkFreeMemory(device.device, vk_particles_index_buffer_memory, nullptr);
+    // }
     if (vk_particles_vertex_buffer != VK_NULL_HANDLE) {
-        vkDestroyBuffer(device.device, vk_particles_vertex_buffer, nullptr);
-        vkFreeMemory(device.device, vk_particles_vertex_buffer_memory, nullptr);
-        vkDestroyBuffer(device.device, vk_particles_index_buffer, nullptr);
-        vkFreeMemory(device.device, vk_particles_index_buffer_memory, nullptr);
+        return;
     }
+
+    float offset = 1.0f / 16.0f;
+    particles_vertices.push_back({{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}});
+    particles_vertices.push_back({{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {offset, 0.0f}, {0.0f, 0.0f, 0.0f}});
+    particles_vertices.push_back({{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {offset, offset}, {0.0f, 0.0f, 0.0f}});
+    particles_vertices.push_back({{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, offset}, {0.0f, 0.0f, 0.0f}});
+
+    size_t len = particles_vertices.size();
+    particles_indices.push_back(len - 4);
+    particles_indices.push_back(len - 3);
+    particles_indices.push_back(len - 2);
+    particles_indices.push_back(len - 2);
+    particles_indices.push_back(len - 1);
+    particles_indices.push_back(len - 4);
 
     VkDeviceSize buffer_size = sizeof(Vertex) * particles_vertices.size();
 
@@ -1719,6 +1921,35 @@ void VkEngine::create_particles_buffers()
 
     vkDestroyBuffer(device.device, staging_buffer_i, nullptr);
     vkFreeMemory(device.device, staging_buffer_memory_i, nullptr);
+
+    create_particles_instance_buffers();
+}
+
+void VkEngine::create_particles_instance_buffers()
+{
+    if (vk_particles_instance_buffer != VK_NULL_HANDLE) {
+        wait_idle();
+        vkDestroyBuffer(device.device, vk_particles_instance_buffer, nullptr);
+        vkFreeMemory(device.device, vk_particles_instance_buffer_memory, nullptr);
+    }
+
+    VkDeviceSize buffer_size_instance = sizeof(ParticleInstanceData) * MAX_PARTICLES;
+
+    // VkBuffer staging_buffer_instance;
+    // VkDeviceMemory staging_buffer_memory_instance;
+    // create_buffer(buffer_size_instance, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer_instance, staging_buffer_memory_instance);
+
+    // void* data_instance;
+    // vkMapMemory(device.device, staging_buffer_memory_instance, 0, buffer_size_instance, 0, &data_instance);
+    // memcpy(data_instance, particles_instance_data.data(), (size_t) buffer_size_instance);
+    // vkUnmapMemory(device.device, staging_buffer_memory_instance);
+
+    create_buffer(buffer_size_instance, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_particles_instance_buffer, vk_particles_instance_buffer_memory);
+
+    // copy_buffer(staging_buffer_instance, vk_particles_instance_buffer, buffer_size_instance);
+
+    // vkDestroyBuffer(device.device, staging_buffer_instance, nullptr);
+    // vkFreeMemory(device.device, staging_buffer_memory_instance, nullptr);
 }
 
 void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
@@ -1730,37 +1961,48 @@ void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
         Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0}
     };
 
-    float tex_x = fmodf((type - 1), 16.0f) / 16.0f;
-    float tex_y = floor((type - 1) / 16.0f) / 16.0f;
-    float offset = 1.0f / 16.0f;
-
-    // tex_x = 0.0f;
-    // tex_y = 0.0f;
-
-    // glm::vec3 right = glm::normalize(glm::cross(player.camera.front, player.camera.up));
-    // glm::vec3 up = glm::normalize(glm::cross(right, player.camera.front));
-
     for (auto& part : parts) {
         particles.push_back(part);
-    
-        // particles_vertices.push_back({{part.position.x, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y}, pos});
-        // particles_vertices.push_back({{part.position.x + part.size, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y}, pos});
-        // particles_vertices.push_back({{part.position.x + part.size, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y + offset}, pos});
-        // particles_vertices.push_back({{part.position.x, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y + offset}, pos});
-
-        particles_vertices.push_back({{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x, tex_y}, pos});
-        particles_vertices.push_back({{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x + offset, tex_y}, pos});
-        particles_vertices.push_back({{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x + offset, tex_y + offset}, pos});
-        particles_vertices.push_back({{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x, tex_y + offset}, pos});
-
-        size_t len = particles_vertices.size();
-        particles_indices.push_back(len - 4);
-        particles_indices.push_back(len - 3);
-        particles_indices.push_back(len - 2);
-        particles_indices.push_back(len - 2);
-        particles_indices.push_back(len - 1);
-        particles_indices.push_back(len - 4);
+        particles_instance_data.push_back({{part.position.x, part.position.y, part.position.z}, part.size, type});
     }
+
+    VkCommandBuffer command_buffer = begin_single_time_commands();
+
+    vkCmdUpdateBuffer(command_buffer, vk_particles_instance_buffer, 0, sizeof(ParticleInstanceData) * particles_instance_data.size(), particles_instance_data.data());
+
+    end_single_time_commands(command_buffer);
+
+    // float tex_x = fmodf((type - 1), 16.0f) / 16.0f;
+    // float tex_y = floor((type - 1) / 16.0f) / 16.0f;
+    // float offset = 1.0f / 16.0f;
+
+    // // tex_x = 0.0f;
+    // // tex_y = 0.0f;
+
+    // // glm::vec3 right = glm::normalize(glm::cross(player.camera.front, player.camera.up));
+    // // glm::vec3 up = glm::normalize(glm::cross(right, player.camera.front));
+
+    // for (auto& part : parts) {
+    //     particles.push_back(part);
+    
+    //     // particles_vertices.push_back({{part.position.x, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y}, pos});
+    //     // particles_vertices.push_back({{part.position.x + part.size, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y}, pos});
+    //     // particles_vertices.push_back({{part.position.x + part.size, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y + offset}, pos});
+    //     // particles_vertices.push_back({{part.position.x, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y + offset}, pos});
+
+    //     particles_vertices.push_back({{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x, tex_y}, pos});
+    //     particles_vertices.push_back({{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x + offset, tex_y}, pos});
+    //     particles_vertices.push_back({{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x + offset, tex_y + offset}, pos});
+    //     particles_vertices.push_back({{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x, tex_y + offset}, pos});
+
+    //     size_t len = particles_vertices.size();
+    //     particles_indices.push_back(len - 4);
+    //     particles_indices.push_back(len - 3);
+    //     particles_indices.push_back(len - 2);
+    //     particles_indices.push_back(len - 2);
+    //     particles_indices.push_back(len - 1);
+    //     particles_indices.push_back(len - 4);
+    // }
 }
 
 void VkEngine::update_particles()
@@ -1773,12 +2015,12 @@ void VkEngine::update_particles()
         particle.velocity.y *= 1.01f;
         particle.life += 0.01f;
         if (particle.life > 0.5f) {
-            particles_indices.erase(particles_indices.begin() + index * 6, particles_indices.begin() + index * 6 + 6);
-            particles_vertices.erase(particles_vertices.begin() + index * 4, particles_vertices.begin() + index * 4 + 4);
-            particles.erase(particles.begin() + index);
-            if (particles.size() > 0) {
-                create_particles_buffers();
-            }
+            // particles_indices.erase(particles_indices.begin() + index * 6, particles_indices.begin() + index * 6 + 6);
+            // particles_vertices.erase(particles_vertices.begin() + index * 4, particles_vertices.begin() + index * 4 + 4);
+            // particles.erase(particles.begin() + index);
+            // if (particles.size() > 0) {
+            //     create_particles_buffers();
+            // }
         }
         index++;
     }
@@ -1798,6 +2040,8 @@ VkEngine::~VkEngine()
         vkFreeMemory(device.device, vk_particles_vertex_buffer_memory, nullptr);
         vkDestroyBuffer(device.device, vk_particles_index_buffer, nullptr);
         vkFreeMemory(device.device, vk_particles_index_buffer_memory, nullptr);
+        vkDestroyBuffer(device.device, vk_particles_instance_buffer, nullptr);
+        vkFreeMemory(device.device, vk_particles_instance_buffer_memory, nullptr);
     }
 
     vkDestroyImageView(device.device, vk_depth_image_view, nullptr);

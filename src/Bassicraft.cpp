@@ -108,7 +108,7 @@ Bassicraft::Bassicraft(/* args */)
             player.update_mouse_pos(engine.window);
         }
 
-        engine.update_particles();
+        // engine.update_particles();
 
         engine.draw_frame(player, world);
         engine.frame_render_duration = std::chrono::duration<float, std::chrono::milliseconds::period>(std::chrono::high_resolution_clock::now() - time_point).count();
@@ -134,6 +134,7 @@ void Bassicraft::init_engine()
     engine.create_command_buffers();
     engine.create_sync_objects();
     engine.create_inventory();
+    engine.create_particles_buffers();
 }
 
 void Bassicraft::init_textures()
@@ -262,7 +263,7 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
         glm::vec4 pos = get_cube_pointed_at(false);
         if (pos.w != -42069 && world[pos.w].blocks[pos.x][pos.y][pos.z].type != 0) {
             engine.create_particles(world[pos.w].blocks[pos.x][pos.y][pos.z].pos, world[pos.w].blocks[pos.x][pos.y][pos.z].type, player);
-            engine.create_particles_buffers();
+            // engine.create_particles_buffers();
             remove_cube(world[pos.w], pos, world[pos.w].blocks[pos.x][pos.y][pos.z]);
             engine.recreate_buffers_chunk(world[pos.w]);
         }

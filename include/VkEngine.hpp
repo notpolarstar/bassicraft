@@ -12,6 +12,7 @@
 #include "Chunk.hpp"
 #include "TextureDataStruct.hpp"
 #include "Particle.hpp"
+#include "InstanceData.hpp"
 
 class VkEngine
 {
@@ -56,10 +57,14 @@ private:
     std::vector<Particle> particles{};
     std::vector<Vertex> particles_vertices{};
     std::vector<uint32_t> particles_indices{};
+    std::vector<ParticleInstanceData> particles_instance_data{};
     VkBuffer vk_particles_vertex_buffer = VK_NULL_HANDLE;
     VkDeviceMemory vk_particles_vertex_buffer_memory = VK_NULL_HANDLE;
     VkBuffer vk_particles_index_buffer = VK_NULL_HANDLE;
     VkDeviceMemory vk_particles_index_buffer_memory = VK_NULL_HANDLE;
+    VkBuffer vk_particles_instance_buffer = VK_NULL_HANDLE;
+    VkDeviceMemory vk_particles_instance_buffer_memory = VK_NULL_HANDLE;
+
 
     VkBuffer vk_uniform_buffer;
     VkDeviceMemory vk_uniform_buffer_memory;
@@ -70,7 +75,8 @@ private:
 
     VkDescriptorSetLayout vk_descriptor_set_layout;
     VkDescriptorPool vk_descriptor_pool;
-    std::vector<VkDescriptorSet> vk_descriptor_sets;
+    std::vector<VkDescriptorSet> vk_descriptor_sets_chunks;
+    std::vector<VkDescriptorSet> vk_descriptor_sets_particles;
 
     VkImage vk_texture_image;
     VkDeviceMemory vk_texture_image_memory;
@@ -88,6 +94,8 @@ public:
     int height = 1080;
     GLFWwindow *window;
     float frame_render_duration = 0.0f;
+
+    const int MAX_PARTICLES = 100;
 
     void create_swapchain();
     void create_render_pass();
@@ -144,6 +152,8 @@ public:
     void create_particles(glm::vec3 pos, uint16_t type, Player& player);
     void create_particles_buffers();
     void update_particles();
+    void create_particles_instance_buffers();
+    void create_graphics_pipeline_particles(VkPipeline& pipeline, VkPipelineLayout& pipeline_layout, const char* vert_path, const char* frag_path, const char* geom_path = nullptr);
 
     VkEngine();
     ~VkEngine();
