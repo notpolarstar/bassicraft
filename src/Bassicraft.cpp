@@ -21,8 +21,7 @@ Bassicraft::Bassicraft(/* args */)
     srand(time(NULL));
 
     noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-    //noise.SetSeed(rand());
-    noise.SetSeed(0);
+    noise.SetSeed(rand());
     noise.SetFrequency(0.01f);
     noise.SetFractalType(FastNoiseLite::FractalType_FBm);
     noise.SetFractalOctaves(3);
@@ -247,6 +246,9 @@ void Bassicraft::key_callback(GLFWwindow* window, int key, int scancode, int act
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         }
     }
+    if (key == GLFW_KEY_G && action == GLFW_PRESS) {
+        player.ghost_mode = !player.ghost_mode;
+    }
 }
 
 void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int mods)
@@ -460,12 +462,14 @@ void Bassicraft::move_player()
     // player.camera.pos = glm::vec3(player.camera.pos.x + offset, player.camera.pos.y, player.camera.pos.z + offset);
 
     if (glfwGetKey(engine.window, GLFW_KEY_W) == GLFW_PRESS) {
-        player.velocity.x += player.camera.front.x * player.camera.speed;
-        player.velocity.z += player.camera.front.z * player.camera.speed;
+        glm::vec3 front = player.camera.front;
+        front.y = 0;
+        player.velocity += glm::normalize(front) * player.camera.speed;
     }
     if (glfwGetKey(engine.window, GLFW_KEY_S) == GLFW_PRESS) {
-        player.velocity.x -= player.camera.front.x * player.camera.speed;
-        player.velocity.z -= player.camera.front.z * player.camera.speed;
+        glm::vec3 front = player.camera.front;
+        front.y = 0;
+        player.velocity -= glm::normalize(front) * player.camera.speed;
     }
     if (glfwGetKey(engine.window, GLFW_KEY_A) == GLFW_PRESS) {
         player.velocity.x -= glm::normalize(glm::cross(player.camera.front, player.camera.up)).x * player.camera.speed;
@@ -479,26 +483,34 @@ void Bassicraft::move_player()
         player.velocity += player.camera.up * 0.5f;
         player.is_jumping = true;
     }
-    if (glfwGetKey(engine.window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS && !chunk_collision(player.camera.pos + glm::vec3(0, -2, 0)) && !chunk_collision(player.camera.pos + glm::vec3(0, -3, 0)) && player.is_jumping == false) {
-        player.velocity -= player.camera.up * player.camera.speed;
-    }
-    if (chunk_collision(player.camera.pos +  glm::vec3(0, 2, 0)) && player.velocity.y > 0) {
-        player.velocity.y = 0;
-        player.is_jumping = false;
-    }
-    if (!chunk_collision(player.camera.pos + glm::vec3(0, 1.8, 0))) {
-        player.velocity.y += 0.02f;
-        player.velocity.y *= 1.5f;
-        player.is_jumping = true;
-    }
-    if (chunk_collision(player.camera.pos + glm::vec3(0, -0.2, 0)) && player.velocity.y < 0) {
-        player.velocity.y = 0;
-    }
-    if (chunk_collision(player.camera.pos + glm::vec3(player.velocity.x, player.velocity.y + 1, 0)) || chunk_collision(player.camera.pos + glm::vec3(player.velocity.x, player.velocity.y, 0))) {
-        player.velocity.x = 0;
-    }
-    if (chunk_collision(player.camera.pos + glm::vec3(0, player.velocity.y + 1, player.velocity.z)) || chunk_collision(player.camera.pos + glm::vec3(0, player.velocity.y, player.velocity.z))) {
-        player.velocity.z = 0;
+    
+    if (!player.ghost_mode) {
+        if (chunk_collision(player.camera.pos +  glm::vec3(0, 2, 0)) && player.velocity.y > 0) {
+            player.velocity.y = 0;
+            player.is_jumping = false;
+        }
+        if (!chunk_collision(player.camera.pos + glm::vec3(0, 1.8, 0))) {
+            player.velocity.y += 0.02f;
+            player.velocity.y *= 1.5f;
+            player.is_jumping = true;
+        }
+        if (chunk_collision(player.camera.pos + glm::vec3(0, -0.2, 0)) && player.velocity.y < 0) {
+            player.velocity.y = 0;
+        }
+        if (chunk_collision(player.camera.pos + glm::vec3(player.velocity.x, player.velocity.y + 1, 0)) || chunk_collision(player.camera.pos + glm::vec3(player.velocity.x, player.velocity.y, 0))) {
+            player.velocity.x = 0;
+        }
+        if (chunk_collision(player.camera.pos + glm::vec3(0, player.velocity.y + 1, player.velocity.z)) || chunk_collision(player.camera.pos + glm::vec3(0, player.velocity.y, player.velocity.z))) {
+            player.velocity.z = 0;
+        }
+    } else {
+        if (glfwGetKey(engine.window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+            player.velocity.y += 0.02f;
+        }
+        if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+            player.velocity.y -= 0.02f;
+        }
+        player.velocity *= 1.3f;
     }
     player.camera.pos += player.velocity;
     player.velocity *= 0.6f;

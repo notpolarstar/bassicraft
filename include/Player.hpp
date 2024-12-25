@@ -28,6 +28,7 @@ public:
 
     glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
     bool is_jumping = false;
+    bool ghost_mode = false;
 
     int selected_item = 1;
 
@@ -81,6 +82,12 @@ public:
         }
         if (camera.pitch < -89.0f) {
             camera.pitch = -89.0f;
+        }
+        if (camera.yaw > 360.0f) {
+            camera.yaw = 0.0f;
+        }
+        if (camera.yaw < 0.0f) {
+            camera.yaw = 360.0f;
         }
 
         glm::vec3 front;
