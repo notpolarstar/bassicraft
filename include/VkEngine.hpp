@@ -95,7 +95,7 @@ public:
     GLFWwindow *window;
     float frame_render_duration = 0.0f;
 
-    const int MAX_PARTICLES = 100;
+    const int MAX_PARTICLES = 200;
 
     void create_swapchain();
     void create_render_pass();

@@ -108,7 +108,7 @@ Bassicraft::Bassicraft(/* args */)
             player.update_mouse_pos(engine.window);
         }
 
-        // engine.update_particles();
+        engine.update_particles();
 
         engine.draw_frame(player, world);
         engine.frame_render_duration = std::chrono::duration<float, std::chrono::milliseconds::period>(std::chrono::high_resolution_clock::now() - time_point).count();

@@ -1955,10 +1955,10 @@ void VkEngine::create_particles_instance_buffers()
 void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
 {
     std::array<Particle, 4> parts{
-        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0},
-        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0},
-        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0},
-        Particle{{pos.x + rand_float(-0.2f, 0.2f), pos.y + rand_float(-0.2f, 0.2f), pos.z + rand_float(-0.2f, 0.2f)}, {rand_float(-0.05, 0.05), rand_float(0.05, 0.1), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, 0.2, 0}
+        Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0},
+        Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0},
+        Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0},
+        Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0}
     };
 
     for (auto& part : parts) {
@@ -1971,59 +1971,37 @@ void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
     vkCmdUpdateBuffer(command_buffer, vk_particles_instance_buffer, 0, sizeof(ParticleInstanceData) * particles_instance_data.size(), particles_instance_data.data());
 
     end_single_time_commands(command_buffer);
-
-    // float tex_x = fmodf((type - 1), 16.0f) / 16.0f;
-    // float tex_y = floor((type - 1) / 16.0f) / 16.0f;
-    // float offset = 1.0f / 16.0f;
-
-    // // tex_x = 0.0f;
-    // // tex_y = 0.0f;
-
-    // // glm::vec3 right = glm::normalize(glm::cross(player.camera.front, player.camera.up));
-    // // glm::vec3 up = glm::normalize(glm::cross(right, player.camera.front));
-
-    // for (auto& part : parts) {
-    //     particles.push_back(part);
-    
-    //     // particles_vertices.push_back({{part.position.x, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y}, pos});
-    //     // particles_vertices.push_back({{part.position.x + part.size, part.position.y, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y}, pos});
-    //     // particles_vertices.push_back({{part.position.x + part.size, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x + offset, tex_y + offset}, pos});
-    //     // particles_vertices.push_back({{part.position.x, part.position.y + part.size, part.position.z}, {part.color.r, part.color.g, part.color.b}, {tex_x, tex_y + offset}, pos});
-
-    //     particles_vertices.push_back({{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x, tex_y}, pos});
-    //     particles_vertices.push_back({{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x + offset, tex_y}, pos});
-    //     particles_vertices.push_back({{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x + offset, tex_y + offset}, pos});
-    //     particles_vertices.push_back({{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {tex_x, tex_y + offset}, pos});
-
-    //     size_t len = particles_vertices.size();
-    //     particles_indices.push_back(len - 4);
-    //     particles_indices.push_back(len - 3);
-    //     particles_indices.push_back(len - 2);
-    //     particles_indices.push_back(len - 2);
-    //     particles_indices.push_back(len - 1);
-    //     particles_indices.push_back(len - 4);
-    // }
 }
 
 void VkEngine::update_particles()
 {
-    return;
+    if (particles.size() == 0 || particles_instance_data.size() == 0) {
+        return;
+    }
+
     int index = 0;
 
     for (auto& particle : particles) {
-        particle.offset += particle.velocity;
-        particle.velocity.y *= 1.01f;
+        particle.position += particle.velocity;
+        particle.velocity.y += 0.01f;
         particle.life += 0.01f;
+        particles_instance_data[index].pos = {particle.position.x, particle.position.y, particle.position.z};
         if (particle.life > 0.5f) {
-            // particles_indices.erase(particles_indices.begin() + index * 6, particles_indices.begin() + index * 6 + 6);
-            // particles_vertices.erase(particles_vertices.begin() + index * 4, particles_vertices.begin() + index * 4 + 4);
-            // particles.erase(particles.begin() + index);
-            // if (particles.size() > 0) {
-            //     create_particles_buffers();
-            // }
+            particles.erase(particles.begin() + index);
+            particles_instance_data.erase(particles_instance_data.begin() + index);
         }
         index++;
     }
+
+    if (particles.size() == 0 || particles_instance_data.size() == 0) {
+        return;
+    }
+
+    VkCommandBuffer command_buffer = begin_single_time_commands();
+
+    vkCmdUpdateBuffer(command_buffer, vk_particles_instance_buffer, 0, sizeof(ParticleInstanceData) * particles_instance_data.size(), particles_instance_data.data());
+
+    end_single_time_commands(command_buffer);
 }
 
 void VkEngine::wait_idle()
