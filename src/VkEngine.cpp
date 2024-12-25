@@ -1283,6 +1283,9 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
         cube.faces += 1;
     }
 
+    cube.pos.x -= chunk_pos.x * 16;
+    cube.pos.z -= chunk_pos.y * 16;
+
     cube.is_displayed = true;
 
     // std::array<uint16_t, 36> cube_indices = {
@@ -1567,6 +1570,8 @@ void VkEngine::create_vertex_buffer_chunk(Chunk& chunk)
 {
     VkDeviceSize buffer_size = sizeof(chunk.vertices[0]) * chunk.vertices.size();
 
+    chunk.vertex_buffer_size = buffer_size;
+
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
     create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
@@ -1588,6 +1593,8 @@ void VkEngine::create_vertex_buffer_chunk(Chunk& chunk)
 void VkEngine::create_index_buffer_chunk(Chunk& chunk)
 {
     VkDeviceSize buffer_size = sizeof(chunk.indices[0]) * chunk.indices.size();
+
+    chunk.index_buffer_size = buffer_size;
 
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
@@ -1618,6 +1625,16 @@ void VkEngine::free_buffers_chunk(Chunk& chunk)
 
 void VkEngine::recreate_buffers_chunk(Chunk& chunk)
 {
+    if (sizeof(chunk.vertices[0]) * chunk.vertices.size() < 65536 && chunk.vertices.size() <= chunk.vertex_buffer_size && chunk.indices.size() <= chunk.index_buffer_size) {
+        VkCommandBuffer command_buffer = begin_single_time_commands();
+
+        vkCmdUpdateBuffer(command_buffer, chunk.vk_vertex_buffer, 0, sizeof(chunk.vertices[0]) * chunk.vertices.size(), chunk.vertices.data());
+        vkCmdUpdateBuffer(command_buffer, chunk.vk_index_buffer, 0, sizeof(chunk.indices[0]) * chunk.indices.size(), chunk.indices.data());
+
+        end_single_time_commands(command_buffer);
+        return;
+    }
+
     wait_idle();
     free_buffers_chunk(chunk);
     create_vertex_buffer_chunk(chunk);

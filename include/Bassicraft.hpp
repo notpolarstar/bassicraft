@@ -22,7 +22,7 @@ private:
     FastNoiseLite noise;
     FastNoiseLite biome_noise;
 
-    int render_distance = 8;
+    int render_distance = 12;
     bool is_cursor_locked = true;
 
     std::vector<Chunk> world;

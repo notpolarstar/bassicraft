@@ -34,9 +34,9 @@ Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : 
             {
                 blocks[x][y][z] = {glm::ivec3(x, y, z), water_type, 0};
             }
-            // if (rand() % 100 == 5 && height <= 16) {
-            //     put_tree(glm::ivec3(x, height, z));
-            // }
+            if (rand() % 100 == 5 && height <= 16) {
+                put_tree(glm::ivec3(x, height, z));
+            }
         }
     }
 }

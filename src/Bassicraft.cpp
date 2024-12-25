@@ -150,6 +150,26 @@ void Bassicraft::init_textures()
 
 void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
 {
+    if (chunk.vertices.size() > 0) {
+        chunk.vertices.clear();
+        chunk.indices.clear();
+    }
+
+    for (auto& c : world) {
+        if (c.pos == chunk.pos + glm::vec2(1, 0)) {
+            chunk.right = &c;
+        }
+        if (c.pos == chunk.pos + glm::vec2(-1, 0)) {
+            chunk.left = &c;
+        }
+        if (c.pos == chunk.pos + glm::vec2(0, 1)) {
+            chunk.back = &c;
+        }
+        if (c.pos == chunk.pos + glm::vec2(0, -1)) {
+            chunk.front = &c;
+        }
+    }
+
     for (int x = 0; x < 16; x++) {
         for (int y = 0; y < 100; y++) {
             for (int z = 0; z < 16; z++) {
@@ -168,15 +188,31 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                     }
                     if (x > 0) {
                         left = chunk.blocks[x - 1][y][z].type;
+                    } else {
+                        if (chunk.left) {
+                            left = chunk.left->blocks[15][y][z].type;
+                        }
                     }
                     if (x < 15) {
                         right = chunk.blocks[x + 1][y][z].type;
+                    } else {
+                        if (chunk.right) {
+                            right = chunk.right->blocks[0][y][z].type;
+                        }
                     }
                     if (z > 0) {
                         front = chunk.blocks[x][y][z - 1].type;
+                    } else {
+                        if (chunk.front) {
+                            front = chunk.front->blocks[x][y][15].type;
+                        }
                     }
                     if (z < 15) {
                         back = chunk.blocks[x][y][z + 1].type;
+                    } else {
+                        if (chunk.back) {
+                            back = chunk.back->blocks[x][y][0].type;
+                        }
                     }
                     if (up || down || left || right || front || back) {
                         engine.add_cube_to_vertices(chunk.blocks[x][y][z], up, down, left, right, front, back, chunk.pos, chunk);
@@ -210,6 +246,28 @@ void Bassicraft::unload_load_new_chunks()
                 set_blocks_in_vertex_buffer(world[siz]);
                 engine.create_vertex_buffer_chunk(world[siz]);
                 engine.create_index_buffer_chunk(world[siz]);
+                for (auto& chunk : world) {
+                    if (chunk.pos == world[siz].pos + glm::vec2(1, 0)) {
+                        chunk.right = &world[siz];
+                        set_blocks_in_vertex_buffer(chunk);
+                        engine.recreate_buffers_chunk(chunk);
+                    }
+                    if (chunk.pos == world[siz].pos + glm::vec2(-1, 0)) {
+                        chunk.left = &world[siz];
+                        set_blocks_in_vertex_buffer(chunk);
+                        engine.recreate_buffers_chunk(chunk);
+                    }
+                    if (chunk.pos == world[siz].pos + glm::vec2(0, 1)) {
+                        chunk.front = &world[siz];
+                        set_blocks_in_vertex_buffer(chunk);
+                        engine.recreate_buffers_chunk(chunk);
+                    }
+                    if (chunk.pos == world[siz].pos + glm::vec2(0, -1)) {
+                        chunk.front = &world[siz];
+                        set_blocks_in_vertex_buffer(chunk);
+                        engine.recreate_buffers_chunk(chunk);
+                    }
+                }
             }
         }
     }
@@ -479,12 +537,12 @@ void Bassicraft::move_player()
         player.velocity.x += glm::normalize(glm::cross(player.camera.front, player.camera.up)).x * player.camera.speed;
         player.velocity.z += glm::normalize(glm::cross(player.camera.front, player.camera.up)).z * player.camera.speed;
     }
-    if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0)) && player.velocity.y == 0) {
-        player.velocity += player.camera.up * 0.5f;
-        player.is_jumping = true;
-    }
     
     if (!player.ghost_mode) {
+        if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0)) && player.velocity.y == 0) {
+            player.velocity += player.camera.up * 0.5f;
+            player.is_jumping = true;
+        }
         if (chunk_collision(player.camera.pos +  glm::vec3(0, 2, 0)) && player.velocity.y > 0) {
             player.velocity.y = 0;
             player.is_jumping = false;
