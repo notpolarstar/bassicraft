@@ -1935,25 +1935,29 @@ void VkEngine::create_particles_instance_buffers()
 
     VkDeviceSize buffer_size_instance = sizeof(ParticleInstanceData) * MAX_PARTICLES;
 
-    // VkBuffer staging_buffer_instance;
-    // VkDeviceMemory staging_buffer_memory_instance;
-    // create_buffer(buffer_size_instance, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer_instance, staging_buffer_memory_instance);
+    VkBuffer staging_buffer_instance;
+    VkDeviceMemory staging_buffer_memory_instance;
+    create_buffer(buffer_size_instance, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer_instance, staging_buffer_memory_instance);
 
-    // void* data_instance;
-    // vkMapMemory(device.device, staging_buffer_memory_instance, 0, buffer_size_instance, 0, &data_instance);
-    // memcpy(data_instance, particles_instance_data.data(), (size_t) buffer_size_instance);
-    // vkUnmapMemory(device.device, staging_buffer_memory_instance);
+    void* data_instance;
+    vkMapMemory(device.device, staging_buffer_memory_instance, 0, buffer_size_instance, 0, &data_instance);
+    memset(data_instance, 0, (size_t) buffer_size_instance);
+    vkUnmapMemory(device.device, staging_buffer_memory_instance);
 
     create_buffer(buffer_size_instance, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_particles_instance_buffer, vk_particles_instance_buffer_memory);
 
-    // copy_buffer(staging_buffer_instance, vk_particles_instance_buffer, buffer_size_instance);
+    copy_buffer(staging_buffer_instance, vk_particles_instance_buffer, buffer_size_instance);
 
-    // vkDestroyBuffer(device.device, staging_buffer_instance, nullptr);
-    // vkFreeMemory(device.device, staging_buffer_memory_instance, nullptr);
+    vkDestroyBuffer(device.device, staging_buffer_instance, nullptr);
+    vkFreeMemory(device.device, staging_buffer_memory_instance, nullptr);
 }
 
 void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
 {
+    if (particles.size() >= MAX_PARTICLES) {
+        return;
+    }
+
     std::array<Particle, 4> parts{
         Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0},
         Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0},

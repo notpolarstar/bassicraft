@@ -32,7 +32,7 @@ struct ParticleInstanceData
 
         attributeDescriptions[2].binding = 1;
         attributeDescriptions[2].location = 5;
-        attributeDescriptions[2].format = VK_FORMAT_R32_UINT;
+        attributeDescriptions[2].format = VK_FORMAT_R16_UINT;
         attributeDescriptions[2].offset = offsetof(ParticleInstanceData, block_type);
 
         return attributeDescriptions;
