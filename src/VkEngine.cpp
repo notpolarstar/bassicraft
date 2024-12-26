@@ -1975,11 +1975,14 @@ void VkEngine::create_particles_instance_buffers()
     vkFreeMemory(device.device, staging_buffer_memory_instance, nullptr);
 }
 
-void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player)
+void VkEngine::create_particles(glm::vec3 pos, uint16_t type, Player& player, glm::vec2 chunk_pos)
 {
     if (particles.size() >= MAX_PARTICLES) {
         return;
     }
+
+    pos.x += chunk_pos.x * 16;
+    pos.z += chunk_pos.y * 16;
 
     std::array<Particle, 4> parts{
         Particle{{pos.x + rand_float(0.0f, 1.0f), pos.y + rand_float(0.0f, 0.2f), pos.z + rand_float(0.0f, 1.0f)}, {rand_float(-0.05, 0.05), rand_float(-0.05, 0.01), rand_float(-0.05, 0.05)}, {1.0f, 1.0f, 1.0f}, rand_float(0.1f, 0.3f), 0},

@@ -149,7 +149,7 @@ public:
     bool LoadTextureFromFile(const char* filename, MyTextureData* tex_data);
     void RemoveTexture(MyTextureData* tex_data);
 
-    void create_particles(glm::vec3 pos, uint16_t type, Player& player);
+    void create_particles(glm::vec3 pos, uint16_t type, Player& player, glm::vec2 chunk_pos);
     void create_particles_buffers();
     void update_particles();
     void create_particles_instance_buffers();
