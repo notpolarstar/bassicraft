@@ -1314,6 +1314,9 @@ void VkEngine::remove_face(std::vector<Vertex>& vertices, std::vector<uint32_t>&
 
 void VkEngine::remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos, Chunk& chunk, Cube& cube)
 {
+    cube.pos.x += chunk_pos.x * 16;
+    cube.pos.z += chunk_pos.y * 16;
+
     for (int i = 0; i < chunk.vertices.size(); i += 4) {
         int indice = i / 4;
         // std::cout << chunk.vertices[i].actual_block.x << " " << chunk.vertices[i].actual_block.y << " " << chunk.vertices[i].actual_block.z << std::endl;
@@ -1331,6 +1334,9 @@ void VkEngine::remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos, Chu
             return;
         }
     }
+
+    cube.pos.x -= chunk_pos.x * 16;
+    cube.pos.z -= chunk_pos.y * 16;
 }
 
 void VkEngine::create_texture_image()
