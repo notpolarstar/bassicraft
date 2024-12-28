@@ -706,6 +706,20 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
             vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
             vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
             vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+            for (auto& c : world) {
+                if (c.left == &chunk) {
+                    c.left = nullptr;
+                }
+                if (c.right == &chunk) {
+                    c.right = nullptr;
+                }
+                if (c.front == &chunk) {
+                    c.front = nullptr;
+                }
+                if (c.back == &chunk) {
+                    c.back = nullptr;
+                }
+            }
             if (&chunk != &world.back()) {
                 chunk = world.back();
             }
