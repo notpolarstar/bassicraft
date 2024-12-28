@@ -52,6 +52,11 @@ private:
     // VkBuffer vk_index_buffer;
     // VkDeviceMemory vk_index_buffer_memory;
 
+    VkDeviceSize staging_buffer_size = sizeof(Vertex) * 10000;
+    VkBuffer staging_buffer;
+    VkDeviceMemory staging_buffer_memory;
+    void* staging_buffer_data;
+
     bool framebuffer_resized = false;
 
     std::vector<Particle> particles{};
@@ -141,6 +146,7 @@ public:
     void free_buffers_chunk(Chunk& chunk);
     void wait_idle();
 
+    void setup_staging_buffer();
     void create_vertex_buffer_chunk(Chunk& chunk);
     void create_index_buffer_chunk(Chunk& chunk);
     void recreate_buffers_chunk(Chunk& chunk);

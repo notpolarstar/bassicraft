@@ -1586,28 +1586,41 @@ bool VkEngine::has_stencil_component(VkFormat format)
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
+void VkEngine::setup_staging_buffer()
+{
+    create_buffer(staging_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+
+    vkMapMemory(device.device, staging_buffer_memory, 0, staging_buffer_size, 0, &staging_buffer_data);
+}
+
 void VkEngine::create_vertex_buffer_chunk(Chunk& chunk)
 {
     VkDeviceSize buffer_size = sizeof(chunk.vertices[0]) * chunk.vertices.size();
 
     chunk.vertex_buffer_size = buffer_size;
 
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
-    create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+    // // std::cout << "Buffer size chunk: " << buffer_size << std::endl;
+    // // std::cout << "Vertices size chunk: " << chunk.vertices.size() << std::endl;
 
-    void* data;
-    vkMapMemory(device.device, staging_buffer_memory, 0, buffer_size, 0, &data);
-    memcpy(data, chunk.vertices.data(), (size_t) buffer_size);
-    vkUnmapMemory(device.device, staging_buffer_memory);
+    // VkBuffer staging_buffer;
+    // VkDeviceMemory staging_buffer_memory;
+    // create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+
+    // void* data;
+    // vkMapMemory(device.device, staging_buffer_memory, 0, buffer_size, 0, &data);
+    // memcpy(data, chunk.vertices.data(), (size_t) buffer_size);
+    // vkUnmapMemory(device.device, staging_buffer_memory);
 
     //std::cout << "Buffer size chunk: " << buffer_size << std::endl;
+
+    memcpy(staging_buffer_data, chunk.vertices.data(), (size_t) buffer_size);
+
     create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, chunk.vk_vertex_buffer, chunk.vk_vertex_buffer_memory);
 
     copy_buffer(staging_buffer, chunk.vk_vertex_buffer, buffer_size);
 
-    vkDestroyBuffer(device.device, staging_buffer, nullptr);
-    vkFreeMemory(device.device, staging_buffer_memory, nullptr);
+    // vkDestroyBuffer(device.device, staging_buffer, nullptr);
+    // vkFreeMemory(device.device, staging_buffer_memory, nullptr);
 }
 
 void VkEngine::create_index_buffer_chunk(Chunk& chunk)
@@ -1616,22 +1629,28 @@ void VkEngine::create_index_buffer_chunk(Chunk& chunk)
 
     chunk.index_buffer_size = buffer_size;
 
-    VkBuffer staging_buffer;
-    VkDeviceMemory staging_buffer_memory;
-    create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+    // std::cout << "Buffer size chunk indices: " << buffer_size << std::endl;
+    // std::cout << "Indices size: " << chunk.indices.size() << std::endl;
 
-    void* data;
-    vkMapMemory(device.device, staging_buffer_memory, 0, buffer_size, 0, &data);
-    memcpy(data, chunk.indices.data(), (size_t) buffer_size);
-    vkUnmapMemory(device.device, staging_buffer_memory);
+    // VkBuffer staging_buffer;
+    // VkDeviceMemory staging_buffer_memory;
+    // create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+
+    // void* data;
+    // vkMapMemory(device.device, staging_buffer_memory, 0, buffer_size, 0, &data);
+    // memcpy(data, chunk.indices.data(), (size_t) buffer_size);
+    // vkUnmapMemory(device.device, staging_buffer_memory);
 
     //std::cout << "Buffer size chunk indices: " << buffer_size << std::endl;
+
+    memcpy(staging_buffer_data, chunk.indices.data(), (size_t) buffer_size);
+
     create_buffer(buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, chunk.vk_index_buffer, chunk.vk_index_buffer_memory);
 
     copy_buffer(staging_buffer, chunk.vk_index_buffer, buffer_size);
 
-    vkDestroyBuffer(device.device, staging_buffer, nullptr);
-    vkFreeMemory(device.device, staging_buffer_memory, nullptr);
+    // vkDestroyBuffer(device.device, staging_buffer, nullptr);
+    // vkFreeMemory(device.device, staging_buffer_memory, nullptr);
 }
 
 void VkEngine::free_buffers_chunk(Chunk& chunk)
@@ -2065,6 +2084,10 @@ VkEngine::~VkEngine()
         vkDestroyBuffer(device.device, vk_particles_instance_buffer, nullptr);
         vkFreeMemory(device.device, vk_particles_instance_buffer_memory, nullptr);
     }
+
+    vkUnmapMemory(device.device, staging_buffer_memory);
+    vkFreeMemory(device.device, staging_buffer_memory, nullptr);
+    vkDestroyBuffer(device.device, staging_buffer, nullptr);
 
     vkDestroyImageView(device.device, vk_depth_image_view, nullptr);
     vkDestroyImage(device.device, vk_depth_image, nullptr);

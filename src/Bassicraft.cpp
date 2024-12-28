@@ -134,6 +134,7 @@ void Bassicraft::init_engine()
     engine.create_sync_objects();
     engine.create_inventory();
     engine.create_particles_buffers();
+    engine.setup_staging_buffer();
 }
 
 void Bassicraft::init_textures()
