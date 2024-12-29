@@ -14,10 +14,10 @@ SRC	=	src/VkEngine.cpp	\
 		imgui/imgui.cpp	\
 		imgui/imgui_draw.cpp	\
 		imgui/imgui_widgets.cpp	\
-		imgui/imgui_tables.cpp	\
-		imgui/imgui_demo.cpp	\
 		imgui/backends/imgui_impl_glfw.cpp	\
-		imgui/backends/imgui_impl_vulkan.cpp
+		imgui/backends/imgui_impl_vulkan.cpp \
+		imgui/imgui_tables.cpp
+		
 
 OBJ	=	$(SRC:.cpp=.o)
 
@@ -36,7 +36,7 @@ all: $(NAME)
 $(NAME):	$(OBJ)	shaders
 		$(CC) -o $(NAME) $(OBJ) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
 
-debug:	CFLAGS += -g3 -fsanitize=address
+debug:	CFLAGS += -g3 -fsanitize=address -fno-omit-frame-pointer
 debug:	$(NAME)
 
 shaders:

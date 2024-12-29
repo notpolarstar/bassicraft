@@ -41,7 +41,10 @@ Bassicraft::Bassicraft(/* args */)
 
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
-            world.push_back(Chunk(glm::vec2(x, z), noise, biome_noise));
+            if (x * x + z * z < render_distance * render_distance) {
+                //world.push_back(Chunk(glm::vec2(x, z), noise, biome_noise));
+                world.emplace_back(glm::vec2(x, z), noise, biome_noise);
+            }
         }
     }
 
@@ -78,6 +81,7 @@ Bassicraft::Bassicraft(/* args */)
         ImGui::Begin("Debug", &open, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("Frame Time: %.1f ms", engine.frame_render_duration);
+        ImGui::Text("Chunks loaded: %d", world.size());
         ImGui::Text("Player position: %.1f %.1f %.1f", player.camera.pos.x, player.camera.pos.y, player.camera.pos.z);
         ImGui::Text("Player chunk: %d %d", (int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
         ImGui::Text("Player chunk position: %.1f %.1f", regular_modulo(player.camera.pos.x, 16), regular_modulo(player.camera.pos.z, 16));
@@ -139,18 +143,17 @@ void Bassicraft::init_engine()
 
 void Bassicraft::init_textures()
 {
-    bool error = engine.LoadTextureFromFile("img/selected_slot.png", &selected_slot_tex);
-    IM_ASSERT(error);
-    error = engine.LoadTextureFromFile("img/regular_slot.png", &regular_slot_tex);
-    IM_ASSERT(error);
-    error = engine.LoadTextureFromFile("img/crosshair.png", &crosshair);
-    IM_ASSERT(error);
-    error = engine.LoadTextureFromFile("img/texture_atlas.png", &blocks_tex);
+    bool error = false;
+    error |= engine.LoadTextureFromFile("img/selected_slot.png", &selected_slot_tex);
+    error |= engine.LoadTextureFromFile("img/regular_slot.png", &regular_slot_tex);
+    error |= engine.LoadTextureFromFile("img/crosshair.png", &crosshair);
+    error |= engine.LoadTextureFromFile("img/texture_atlas.png", &blocks_tex);
     IM_ASSERT(error);
 }
 
 void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
 {
+    chunk.is_rendered = true;
     if (chunk.vertices.size() > 0) {
         chunk.vertices.clear();
         chunk.indices.clear();
@@ -159,16 +162,30 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
     for (auto& c : world) {
         if (c.pos == chunk.pos + glm::vec2(1, 0)) {
             chunk.right = &c;
-        }
-        if (c.pos == chunk.pos + glm::vec2(-1, 0)) {
+        } else if (c.pos == chunk.pos + glm::vec2(-1, 0)) {
             chunk.left = &c;
-        }
-        if (c.pos == chunk.pos + glm::vec2(0, 1)) {
+        } else if (c.pos == chunk.pos + glm::vec2(0, 1)) {
             chunk.back = &c;
-        }
-        if (c.pos == chunk.pos + glm::vec2(0, -1)) {
+        } else if (c.pos == chunk.pos + glm::vec2(0, -1)) {
             chunk.front = &c;
         }
+    }
+
+    if (!chunk.right) {
+        world.emplace_back(chunk.pos + glm::vec2(1, 0), noise, biome_noise);
+        chunk.right = &world.back();
+    }
+    if (!chunk.left) {
+        world.emplace_back(chunk.pos + glm::vec2(-1, 0), noise, biome_noise);
+        chunk.left = &world.back();
+    }
+    if (!chunk.back) {
+        world.emplace_back(chunk.pos + glm::vec2(0, 1), noise, biome_noise);
+        chunk.back = &world.back();
+    }
+    if (!chunk.front) {
+        world.emplace_back(chunk.pos + glm::vec2(0, -1), noise, biome_noise);
+        chunk.front = &world.back();
     }
 
     for (int x = 0; x < 16; x++) {
@@ -211,7 +228,7 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                     if (z < 15) {
                         back = chunk.blocks[x][y][z + 1].type;
                     } else {
-                        if (chunk.back) {
+                        if (chunk.back && chunk.back->blocks[x][y][0].type != 0) {
                             back = chunk.back->blocks[x][y][0].type;
                         }
                     }
@@ -228,47 +245,14 @@ void Bassicraft::unload_load_new_chunks()
 {
     glm::vec2 player_chunk = glm::vec2((int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
     for (auto& chunk : world) {
-        if (chunk.pos.x < player_chunk.x - render_distance || chunk.pos.x > player_chunk.x + render_distance || chunk.pos.y < player_chunk.y - render_distance || chunk.pos.y > player_chunk.y + render_distance) {
+        if (chunk.is_rendered && (chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) > render_distance * render_distance) {
             chunk.should_be_deleted = true;
         }
-    }
-    for (int x = -render_distance; x < render_distance; x++) {
-        for (int z = -render_distance; z < render_distance; z++) {
-            bool found = false;
-            for (auto& chunk : world) {
-                if (chunk.pos == glm::vec2(player_chunk.x + x, player_chunk.y + z)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                int siz = world.size();
-                world.push_back(Chunk(glm::vec2(player_chunk.x + x, player_chunk.y + z), noise, biome_noise));
-                set_blocks_in_vertex_buffer(world[siz]);
-                engine.create_vertex_buffer_chunk(world[siz]);
-                engine.create_index_buffer_chunk(world[siz]);
-                for (auto& chunk : world) {
-                    if (chunk.pos == world[siz].pos + glm::vec2(1, 0)) {
-                        chunk.right = &world[siz];
-                        set_blocks_in_vertex_buffer(chunk);
-                        engine.recreate_buffers_chunk(chunk);
-                    }
-                    if (chunk.pos == world[siz].pos + glm::vec2(-1, 0)) {
-                        chunk.left = &world[siz];
-                        set_blocks_in_vertex_buffer(chunk);
-                        engine.recreate_buffers_chunk(chunk);
-                    }
-                    if (chunk.pos == world[siz].pos + glm::vec2(0, 1)) {
-                        chunk.front = &world[siz];
-                        set_blocks_in_vertex_buffer(chunk);
-                        engine.recreate_buffers_chunk(chunk);
-                    }
-                    if (chunk.pos == world[siz].pos + glm::vec2(0, -1)) {
-                        chunk.front = &world[siz];
-                        set_blocks_in_vertex_buffer(chunk);
-                        engine.recreate_buffers_chunk(chunk);
-                    }
-                }
+        if ((chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) < render_distance * render_distance) {
+            if (!chunk.is_rendered) {
+                set_blocks_in_vertex_buffer(chunk);
+                engine.create_vertex_buffer_chunk(chunk);
+                engine.create_index_buffer_chunk(chunk);
             }
         }
     }
@@ -362,58 +346,42 @@ void Bassicraft::add_cube(Chunk& chunk, Cube& cube)
 
 void Bassicraft::remove_cube(Chunk& chunk, glm::ivec3 pos, Cube& cube)
 {
-    engine.remove_cube_from_vertices(pos, chunk.pos, chunk, cube);
     chunk.blocks[pos.x][pos.y][pos.z].type = 0;
-    if (pos.x > 0 && chunk.blocks[pos.x - 1][pos.y][pos.z].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x - 1, pos.y, pos.z), chunk.pos, chunk, chunk.blocks[pos.x - 1][pos.y][pos.z]);
-        chunk.blocks[pos.x - 1][pos.y][pos.z].pos = glm::ivec3(pos.x - 1, pos.y, pos.z);
-        engine.add_cube_to_vertices(chunk.blocks[pos.x - 1][pos.y][pos.z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
-    } else if (pos.x == 0 && chunk.left->blocks[15][pos.y][pos.z].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(15, pos.y, pos.z), chunk.left->pos, *chunk.left, chunk.left->blocks[15][pos.y][pos.z]);
-        chunk.left->blocks[15][pos.y][pos.z].pos = glm::ivec3(15, pos.y, pos.z);
-        engine.add_cube_to_vertices(chunk.left->blocks[15][pos.y][pos.z], 0, 0, 0, 0, 0, 0, chunk.left->pos, *chunk.left);
+    if (pos.x > 0) {
+        chunk.blocks[pos.x - 1][pos.y][pos.z].type != 0;
+    } else if (chunk.left) {
+        chunk.left->blocks[15][pos.y][pos.z].type != 0;
+        set_blocks_in_vertex_buffer(*chunk.left);
         engine.recreate_buffers_chunk(*chunk.left);
     }
-    if (pos.x < 15 && chunk.blocks[pos.x + 1][pos.y][pos.z].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x + 1, pos.y, pos.z), chunk.pos, chunk, chunk.blocks[pos.x + 1][pos.y][pos.z]);
-        chunk.blocks[pos.x + 1][pos.y][pos.z].pos = glm::ivec3(pos.x + 1, pos.y, pos.z);
-        engine.add_cube_to_vertices(chunk.blocks[pos.x + 1][pos.y][pos.z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
-    } else if (pos.x == 15 && chunk.right->blocks[0][pos.y][pos.z].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(0, pos.y, pos.z), chunk.right->pos, *chunk.right, chunk.right->blocks[0][pos.y][pos.z]);
-        chunk.right->blocks[0][pos.y][pos.z].pos = glm::ivec3(0, pos.y, pos.z);
-        engine.add_cube_to_vertices(chunk.right->blocks[0][pos.y][pos.z], 0, 0, 0, 0, 0, 0, chunk.right->pos, *chunk.right);
+    if (pos.x < 15) {
+        chunk.blocks[pos.x + 1][pos.y][pos.z].type != 0;
+    } else if (chunk.right) {
+        chunk.right->blocks[0][pos.y][pos.z].type != 0;
+        set_blocks_in_vertex_buffer(*chunk.right);
         engine.recreate_buffers_chunk(*chunk.right);
     }
-    if (pos.y > 0 && chunk.blocks[pos.x][pos.y - 1][pos.z].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x, pos.y - 1, pos.z), chunk.pos, chunk, chunk.blocks[pos.x][pos.y - 1][pos.z]);
-        chunk.blocks[pos.x][pos.y - 1][pos.z].pos = glm::ivec3(pos.x, pos.y - 1, pos.z);
-        engine.add_cube_to_vertices(chunk.blocks[pos.x][pos.y - 1][pos.z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
+    if (pos.y > 0) {
+        chunk.blocks[pos.x][pos.y - 1][pos.z].type != 0;
     }
-    if (pos.y < 99 && chunk.blocks[pos.x][pos.y + 1][pos.z].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x, pos.y + 1, pos.z), chunk.pos, chunk, chunk.blocks[pos.x][pos.y + 1][pos.z]);
-        chunk.blocks[pos.x][pos.y + 1][pos.z].pos = glm::ivec3(pos.x, pos.y + 1, pos.z);
-        engine.add_cube_to_vertices(chunk.blocks[pos.x][pos.y + 1][pos.z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
+    if (pos.y < 99) {
+        chunk.blocks[pos.x][pos.y + 1][pos.z].type != 0;
     }
-    if (pos.z > 0 && chunk.blocks[pos.x][pos.y][pos.z - 1].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x, pos.y, pos.z - 1), chunk.pos, chunk, chunk.blocks[pos.x][pos.y][pos.z - 1]);
-        chunk.blocks[pos.x][pos.y][pos.z - 1].pos = glm::ivec3(pos.x, pos.y, pos.z - 1);
-        engine.add_cube_to_vertices(chunk.blocks[pos.x][pos.y][pos.z - 1], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
-    } else if (pos.z == 0 && chunk.front->blocks[pos.x][pos.y][15].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x, pos.y, 15), chunk.front->pos, *chunk.front, chunk.front->blocks[pos.x][pos.y][15]);
-        chunk.front->blocks[pos.x][pos.y][15].pos = glm::ivec3(pos.x, pos.y, 15);
-        engine.add_cube_to_vertices(chunk.front->blocks[pos.x][pos.y][15], 0, 0, 0, 0, 0, 0, chunk.front->pos, *chunk.front);
+    if (pos.z > 0) {
+        chunk.blocks[pos.x][pos.y][pos.z - 1].type != 0;
+    } else if (chunk.front) {
+        chunk.front->blocks[pos.x][pos.y][15].type != 0;
+        set_blocks_in_vertex_buffer(*chunk.front);
         engine.recreate_buffers_chunk(*chunk.front);
     }
-    if (pos.z < 15 && chunk.blocks[pos.x][pos.y][pos.z + 1].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x, pos.y, pos.z + 1), chunk.pos, chunk, chunk.blocks[pos.x][pos.y][pos.z + 1]);
-        chunk.blocks[pos.x][pos.y][pos.z + 1].pos = glm::ivec3(pos.x, pos.y, pos.z + 1);
-        engine.add_cube_to_vertices(chunk.blocks[pos.x][pos.y][pos.z + 1], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
-    } else if (pos.z == 15 && chunk.back->blocks[pos.x][pos.y][0].type != 0) {
-        engine.remove_cube_from_vertices(glm::ivec3(pos.x, pos.y, 0), chunk.back->pos, *chunk.back, chunk.back->blocks[pos.x][pos.y][0]);
-        chunk.back->blocks[pos.x][pos.y][0].pos = glm::ivec3(pos.x, pos.y, 0);
-        engine.add_cube_to_vertices(chunk.back->blocks[pos.x][pos.y][0], 0, 0, 0, 0, 0, 0, chunk.back->pos, *chunk.back);
+    if (pos.z < 15) {
+        chunk.blocks[pos.x][pos.y][pos.z + 1].type != 0;
+    } else if (chunk.back) {
+        chunk.back->blocks[pos.x][pos.y][0].type != 0;
+        set_blocks_in_vertex_buffer(*chunk.back);
         engine.recreate_buffers_chunk(*chunk.back);
     }
+    set_blocks_in_vertex_buffer(chunk);
 }
 
 glm::vec4 Bassicraft::get_cube_pointed_at(bool for_placing)

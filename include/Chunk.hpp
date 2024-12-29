@@ -29,6 +29,7 @@ public:
     std::vector<uint32_t> indices{};
 
     bool should_be_deleted = false;
+    bool is_rendered = false;
 
     Chunk* left = nullptr;
     Chunk* right = nullptr;

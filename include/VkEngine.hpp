@@ -52,6 +52,11 @@ private:
     // VkBuffer vk_index_buffer;
     // VkDeviceMemory vk_index_buffer_memory;
 
+    std::vector<VkBuffer> vk_chunks_vertex_buffers;
+    std::vector<VkDeviceMemory> vk_chunks_vertex_buffers_memory;
+    std::vector<VkBuffer> vk_chunks_index_buffers;
+    std::vector<VkDeviceMemory> vk_chunks_index_buffers_memory;
+
     VkDeviceSize staging_buffer_size = sizeof(Vertex) * 10000;
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
@@ -147,6 +152,9 @@ public:
     void wait_idle();
 
     void setup_staging_buffer();
+    void create_vertex_buffers_chunks(int render_distance);
+    void create_index_buffers_chunks(int render_distance);
+    void give_buffers_to_chunk(Chunk& chunk);
     void create_vertex_buffer_chunk(Chunk& chunk);
     void create_index_buffer_chunk(Chunk& chunk);
     void recreate_buffers_chunk(Chunk& chunk);

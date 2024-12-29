@@ -246,7 +246,7 @@ void VkEngine::create_graphics_pipeline_particles(VkPipeline& pipeline, VkPipeli
     // auto binding_description = Vertex::get_binding_description();
     // auto attribute_descriptions = Vertex::get_attribute_descriptions();
     std::array<VkVertexInputBindingDescription, 2> binding_descriptions = {Vertex::get_binding_description(), ParticleInstanceData::get_binding_description()};
-    std::array<VkVertexInputAttributeDescription, 6> attribute_descriptions = {Vertex::get_attribute_descriptions()[0], Vertex::get_attribute_descriptions()[1], Vertex::get_attribute_descriptions()[2], ParticleInstanceData::get_attribute_descriptions()[0], ParticleInstanceData::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[2]};
+    std::array<VkVertexInputAttributeDescription, 5> attribute_descriptions = {Vertex::get_attribute_descriptions()[0], Vertex::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[0], ParticleInstanceData::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[2]};
 
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
     vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -601,7 +601,7 @@ void VkEngine::record_command_buffer(VkCommandBuffer command_buffer, uint32_t im
 
     vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk_pipeline_layout, 0, 1, &vk_descriptor_sets_chunks[current_frame], 0, nullptr);
     for (auto& chunk : world) {
-        if (chunk.should_be_deleted || glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
+        if (!chunk.is_rendered || chunk.should_be_deleted || glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
             continue;
         }
         vkCmdBindVertexBuffers(command_buffer, 0, 1, &chunk.vk_vertex_buffer, offsets);
@@ -1162,17 +1162,17 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     cube.pos.x += chunk_pos.x * 16;
     cube.pos.z += chunk_pos.y * 16;
 
-    std::vector<glm::vec3> colors = {
-        {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f},
-        {1.0f, 1.0f, 1.0f}
-    };
+    // std::vector<glm::vec3> colors = {
+    //     {1.0f, 1.0f, 1.0f},
+    //     {1.0f, 1.0f, 1.0f},
+    //     {1.0f, 1.0f, 1.0f},
+    //     {1.0f, 1.0f, 1.0f},
+    //     {1.0f, 1.0f, 1.0f},
+    //     {1.0f, 1.0f, 1.0f}
+    // };
 
     if (cube.type == 1) {
-        colors[2] = {0.3f, 0.9f, 0.1f};
+        // colors[2] = {0.3f, 0.9f, 0.1f};
         texture_coords[0] = {fmodf((4 - 1), 16.0f) / 16.0f, floor((4 - 1) / 16.0f) / 16.0f};
         texture_coords[1] = {fmodf((4 - 1), 16.0f) / 16.0f, floor((4 - 1) / 16.0f) / 16.0f};
         //texture_coords[2] = {fmodf((4 - 1), 16.0f) / 16.0f, floor((4 - 1) / 16.0f) / 16.0f};
@@ -1184,23 +1184,23 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
         texture_coords[2] = {fmodf((22 - 1), 16.0f) / 16.0f, floor((22 - 1) / 16.0f) / 16.0f};
         texture_coords[3] = {fmodf((22 - 1), 16.0f) / 16.0f, floor((22 - 1) / 16.0f) / 16.0f};
     }
-    if (cube.type == 53 || cube.type == 54) {
-        colors[0] = {0.25f, 0.95f, 0.05f};
-        colors[1] = {0.25f, 0.95f, 0.05f};
-        colors[2] = {0.25f, 0.95f, 0.05f};
-        colors[3] = {0.25f, 0.95f, 0.05f};
-        colors[4] = {0.25f, 0.95f, 0.05f};
-        colors[5] = {0.25f, 0.95f, 0.05f};
-    }
+    // if (cube.type == 53 || cube.type == 54) {
+    //     colors[0] = {0.25f, 0.95f, 0.05f};
+    //     colors[1] = {0.25f, 0.95f, 0.05f};
+    //     colors[2] = {0.25f, 0.95f, 0.05f};
+    //     colors[3] = {0.25f, 0.95f, 0.05f};
+    //     colors[4] = {0.25f, 0.95f, 0.05f};
+    //     colors[5] = {0.25f, 0.95f, 0.05f};
+    // }
 
     int i = 0;
 
     //back good
     if (front == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1] + offset}});
 
         size_t len = chunk.vertices.size();
         chunk.indices.push_back(len - 4);
@@ -1214,10 +1214,10 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //front good
     if (back == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0], texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0], texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, {texture_coords[i][0], texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
 
         size_t len = chunk.vertices.size();
         chunk.indices.push_back(len - 4);
@@ -1231,10 +1231,10 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //up good
     if (up == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0], texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0], texture_coords[i][1] + offset}});
 
         size_t len = chunk.vertices.size();
         chunk.indices.push_back(len - 4);
@@ -1248,10 +1248,10 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //down good
     if (down == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0], texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, {texture_coords[i][0], texture_coords[i][1] + offset}});
 
         size_t len = chunk.vertices.size();
         chunk.indices.push_back(len - 4);
@@ -1265,10 +1265,10 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //left
     if (right == 0) {
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1]  + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]  + offset}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
 
         size_t len = chunk.vertices.size();
         chunk.indices.push_back(len - 4);
@@ -1282,10 +1282,10 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //right
     if (left == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z}, colors[i], {texture_coords[i][0], texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1] + offset}, {cube.pos.x, cube.pos.y, cube.pos.z}});
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, colors[i], {texture_coords[i][0] + offset, texture_coords[i][1]}, {cube.pos.x, cube.pos.y, cube.pos.z}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y + 1.0f, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
 
         size_t len = chunk.vertices.size();
         chunk.indices.push_back(len - 4);
@@ -1301,18 +1301,6 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     cube.pos.z -= chunk_pos.y * 16;
 
     cube.is_displayed = true;
-
-    // std::array<uint16_t, 36> cube_indices = {
-    //     4, 1, 2, 2, 3, 4,
-    //     8, 7, 6, 6, 5, 8,
-    //     12, 9, 10, 10, 11, 12,
-    //     16, 15, 14, 14, 13, 16,
-    //     20, 19, 18, 18, 17, 20,
-    //     24, 21, 22, 22, 23, 24};
-    // size_t vect_len = chunk.vertices.size();
-
-    // cube.pos.x -= chunk_pos.x * 16;
-    // cube.pos.z -= chunk_pos.y * 16;
 }
 
 void VkEngine::remove_face(std::vector<Vertex>& vertices, std::vector<uint32_t>& indices, int i, int indice)
@@ -1328,29 +1316,6 @@ void VkEngine::remove_face(std::vector<Vertex>& vertices, std::vector<uint32_t>&
 
 void VkEngine::remove_cube_from_vertices(glm::vec3 pos, glm::vec2 chunk_pos, Chunk& chunk, Cube& cube)
 {
-    cube.pos.x += chunk_pos.x * 16;
-    cube.pos.z += chunk_pos.y * 16;
-
-    for (int i = 0; i < chunk.vertices.size(); i += 4) {
-        int indice = i / 4;
-        // std::cout << chunk.vertices[i].actual_block.x << " " << chunk.vertices[i].actual_block.y << " " << chunk.vertices[i].actual_block.z << std::endl;
-        // std::cout << cube.pos.x << " " << cube.pos.y << " " << cube.pos.z << std::endl;
-        if (chunk.vertices[i].actual_block == cube.pos) {
-            //std::cout << cube.faces << std::endl;
-            chunk.vertices.erase(chunk.vertices.begin() + i, chunk.vertices.begin() + i + (4 * cube.faces));
-            chunk.indices.erase(chunk.indices.begin() + indice * 6, chunk.indices.begin() + indice * 6 + (6 * cube.faces));
-            for (int j = 0; j < chunk.indices.size(); j++) {
-                if (chunk.indices[j] > i) {
-                    chunk.indices[j] -= 4 * cube.faces;
-                }
-            }
-            cube.faces = 0;
-            return;
-        }
-    }
-
-    cube.pos.x -= chunk_pos.x * 16;
-    cube.pos.z -= chunk_pos.y * 16;
 }
 
 void VkEngine::create_texture_image()
@@ -1593,8 +1558,26 @@ void VkEngine::setup_staging_buffer()
     vkMapMemory(device.device, staging_buffer_memory, 0, staging_buffer_size, 0, &staging_buffer_data);
 }
 
+void VkEngine::create_vertex_buffers_chunks(int render_distance)
+{
+    for (int i = 0; i < render_distance * render_distance * 4 + render_distance * 4; i++) {
+        vk_chunks_vertex_buffers.push_back(VkBuffer());
+        vk_chunks_vertex_buffers_memory.push_back(VkDeviceMemory());
+        vk_chunks_index_buffers.push_back(VkBuffer());
+        vk_chunks_index_buffers_memory.push_back(VkDeviceMemory());
+
+        create_buffer(staging_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_chunks_vertex_buffers[i], vk_chunks_vertex_buffers_memory[i]);
+        create_buffer(staging_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vk_chunks_index_buffers[i], vk_chunks_index_buffers_memory[i]);
+    }
+}
+
 void VkEngine::create_vertex_buffer_chunk(Chunk& chunk)
 {
+    if (chunk.vertices.size() == 0) {
+        chunk.should_be_deleted = true;
+        return;
+    }
+
     VkDeviceSize buffer_size = sizeof(chunk.vertices[0]) * chunk.vertices.size();
 
     chunk.vertex_buffer_size = buffer_size;
@@ -1625,6 +1608,11 @@ void VkEngine::create_vertex_buffer_chunk(Chunk& chunk)
 
 void VkEngine::create_index_buffer_chunk(Chunk& chunk)
 {
+    if (chunk.indices.size() == 0) {
+        chunk.should_be_deleted = true;
+        return;
+    }
+
     VkDeviceSize buffer_size = sizeof(chunk.indices[0]) * chunk.indices.size();
 
     chunk.index_buffer_size = buffer_size;
@@ -1664,15 +1652,15 @@ void VkEngine::free_buffers_chunk(Chunk& chunk)
 
 void VkEngine::recreate_buffers_chunk(Chunk& chunk)
 {
-    if (sizeof(chunk.vertices[0]) * chunk.vertices.size() < 65536 && chunk.vertices.size() <= chunk.vertex_buffer_size && chunk.indices.size() <= chunk.index_buffer_size) {
-        VkCommandBuffer command_buffer = begin_single_time_commands();
+    // if (sizeof(chunk.vertices[0]) * chunk.vertices.size() < 65536 && sizeof(chunk.indices[0]) * chunk.indices.size() < 65536) {
+    //     VkCommandBuffer command_buffer = begin_single_time_commands();
 
-        vkCmdUpdateBuffer(command_buffer, chunk.vk_vertex_buffer, 0, sizeof(chunk.vertices[0]) * chunk.vertices.size(), chunk.vertices.data());
-        vkCmdUpdateBuffer(command_buffer, chunk.vk_index_buffer, 0, sizeof(chunk.indices[0]) * chunk.indices.size(), chunk.indices.data());
+    //     vkCmdUpdateBuffer(command_buffer, chunk.vk_vertex_buffer, 0, sizeof(chunk.vertices[0]) * chunk.vertices.size(), chunk.vertices.data());
+    //     vkCmdUpdateBuffer(command_buffer, chunk.vk_index_buffer, 0, sizeof(chunk.indices[0]) * chunk.indices.size(), chunk.indices.data());
 
-        end_single_time_commands(command_buffer);
-        return;
-    }
+    //     end_single_time_commands(command_buffer);
+    //     return;
+    // }
 
     wait_idle();
     free_buffers_chunk(chunk);
@@ -1929,10 +1917,10 @@ void VkEngine::create_particles_buffers()
     }
 
     float offset = 1.0f / 16.0f;
-    particles_vertices.push_back({{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}});
-    particles_vertices.push_back({{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {offset, 0.0f}, {0.0f, 0.0f, 0.0f}});
-    particles_vertices.push_back({{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {offset, offset}, {0.0f, 0.0f, 0.0f}});
-    particles_vertices.push_back({{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, offset}, {0.0f, 0.0f, 0.0f}});
+    particles_vertices.push_back({{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f}});
+    particles_vertices.push_back({{0.5f, -0.5f, 0.0f}, {offset, 0.0f}});
+    particles_vertices.push_back({{0.5f, 0.5f, 0.0f}, {offset, offset}});
+    particles_vertices.push_back({{-0.5f, 0.5f, 0.0f}, {0.0f, offset}});
 
     size_t len = particles_vertices.size();
     particles_indices.push_back(len - 4);
