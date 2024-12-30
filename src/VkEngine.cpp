@@ -712,22 +712,21 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
                 chunk.vk_vertex_buffer_memory = VK_NULL_HANDLE;
                 chunk.vk_index_buffer_memory = VK_NULL_HANDLE;
             }
-            bool can_be_kept = false;
             for (auto& c : world) {
-                if (c.left == &chunk || c.right == &chunk || c.front == &chunk || c.back == &chunk) {
-                    can_be_kept = true;
-                    break;
+                if (c.right == &chunk) {
+                    c.right = nullptr;
+                } else if (c.left == &chunk) {
+                    c.left = nullptr;
+                } else if (c.front == &chunk) {
+                    c.front = nullptr;
+                } else if (c.back == &chunk) {
+                    c.back = nullptr;
                 }
             }
-            if (can_be_kept) {
-                chunk.should_be_deleted = false;
-                chunk.is_rendered = false;
-            } else {
-                if (&chunk != &world.back()) {
-                    chunk = world.back();
-                }
-                world.pop_back();
+            if (&chunk != &world.back()) {
+                chunk = world.back();
             }
+            world.pop_back();
         }
         p++;
     }

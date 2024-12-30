@@ -42,10 +42,9 @@ Bassicraft::Bassicraft(/* args */)
 
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
-            if (x * x + z * z < render_distance * render_distance) {
-                //world.push_back(Chunk(glm::vec2(x, z), noise, biome_noise));
+            // if (x * x + z * z < render_distance * render_distance) {
                 world.emplace_back(glm::vec2(x, z), noise, biome_noise);
-            }
+            // }
         }
     }
 
@@ -208,28 +207,28 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                     if (x > 0) {
                         left = chunk.blocks[x - 1][y][z].type;
                     } else {
-                        if (chunk.left) {
+                        if (chunk.left && !chunk.left->should_be_deleted) {
                             left = chunk.left->blocks[15][y][z].type;
                         }
                     }
                     if (x < 15) {
                         right = chunk.blocks[x + 1][y][z].type;
                     } else {
-                        if (chunk.right) {
+                        if (chunk.right && !chunk.right->should_be_deleted) {
                             right = chunk.right->blocks[0][y][z].type;
                         }
                     }
                     if (z > 0) {
                         front = chunk.blocks[x][y][z - 1].type;
                     } else {
-                        if (chunk.front) {
+                        if (chunk.front && !chunk.front->should_be_deleted) {
                             front = chunk.front->blocks[x][y][15].type;
                         }
                     }
                     if (z < 15) {
                         back = chunk.blocks[x][y][z + 1].type;
                     } else {
-                        if (chunk.back && chunk.back->blocks[x][y][0].type != 0) {
+                        if (chunk.back && !chunk.back->should_be_deleted) {
                             back = chunk.back->blocks[x][y][0].type;
                         }
                     }
@@ -244,16 +243,16 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
 
 void Bassicraft::unload_load_new_chunks()
 {
-    glm::vec2 player_chunk = glm::vec2((int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
-    for (auto& chunk : world) {
-        if (chunk.is_rendered && (chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) >= render_distance * render_distance) {
-            chunk.should_be_deleted = true;
-        }
-        if ((chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) < render_distance * render_distance) {
-            if (!chunk.is_rendered) {
-                set_blocks_in_vertex_buffer(chunk);
-                engine.create_vertex_buffer_chunk(chunk);
-                engine.create_index_buffer_chunk(chunk);
+    glm::ivec2 player_chunk = glm::ivec2(round(player.camera.pos.x / 16), round(player.camera.pos.z / 16));
+    int len_chunks = world.size();
+    for (int i = 0; i < len_chunks; i++) {
+        if ((world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) > (render_distance + 1) * (render_distance + 1)) {
+            world[i].should_be_deleted = true;
+        } else if ((world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) < render_distance * render_distance) {
+            if (!world[i].is_rendered && !world[i].should_be_deleted) {
+                set_blocks_in_vertex_buffer(world[i]);
+                engine.create_vertex_buffer_chunk(world[i]);
+                engine.create_index_buffer_chunk(world[i]);
             }
         }
     }
@@ -338,11 +337,13 @@ void Bassicraft::mouse_buttons(GLFWwindow* window, int button, int action, int m
 void Bassicraft::add_cube(Chunk& chunk, Cube& cube)
 {
     chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z] = cube;
-    if (cube.pos.x == 0 || cube.pos.x == 15 || cube.pos.y == 0 || cube.pos.y == 99 || cube.pos.z == 0 || cube.pos.z == 15) {
-        engine.add_cube_to_vertices(chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
-    } else if (chunk.blocks[cube.pos.x - 1][cube.pos.y][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x + 1][cube.pos.y][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y - 1][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y + 1][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z - 1].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z + 1].type == 0) {
-        engine.add_cube_to_vertices(chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z], chunk.blocks[cube.pos.x][cube.pos.y - 1][cube.pos.z].type, chunk.blocks[cube.pos.x][cube.pos.y + 1][cube.pos.z].type, chunk.blocks[cube.pos.x - 1][cube.pos.y][cube.pos.z].type, chunk.blocks[cube.pos.x + 1][cube.pos.y][cube.pos.z].type, chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z - 1].type, chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z + 1].type, chunk.pos, chunk);
-    }
+    set_blocks_in_vertex_buffer(chunk);
+    engine.recreate_buffers_chunk(chunk);
+    // if (cube.pos.x == 0 || cube.pos.x == 15 || cube.pos.y == 0 || cube.pos.y == 99 || cube.pos.z == 0 || cube.pos.z == 15) {
+    //     engine.add_cube_to_vertices(chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z], 0, 0, 0, 0, 0, 0, chunk.pos, chunk);
+    // } else if (chunk.blocks[cube.pos.x - 1][cube.pos.y][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x + 1][cube.pos.y][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y - 1][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y + 1][cube.pos.z].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z - 1].type == 0 || chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z + 1].type == 0) {
+    //     engine.add_cube_to_vertices(chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z], chunk.blocks[cube.pos.x][cube.pos.y - 1][cube.pos.z].type, chunk.blocks[cube.pos.x][cube.pos.y + 1][cube.pos.z].type, chunk.blocks[cube.pos.x - 1][cube.pos.y][cube.pos.z].type, chunk.blocks[cube.pos.x + 1][cube.pos.y][cube.pos.z].type, chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z - 1].type, chunk.blocks[cube.pos.x][cube.pos.y][cube.pos.z + 1].type, chunk.pos, chunk);
+    // }
 }
 
 void Bassicraft::remove_cube(Chunk& chunk, glm::ivec3 pos, Cube& cube)
