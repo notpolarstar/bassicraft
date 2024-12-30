@@ -701,29 +701,33 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
     int p = 0;
     for (auto& chunk : world) {
         if (chunk.should_be_deleted && p < world.size() - 1) {
-            vkWaitForFences(device.device, MAX_FRAMES_IN_FLIGHT, vk_in_flight_fences.data(), VK_TRUE, UINT64_MAX);
-            vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
-            vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
-            vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
-            vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+            if (chunk.vk_vertex_buffer != VK_NULL_HANDLE && chunk.vk_index_buffer != VK_NULL_HANDLE) {
+                vkWaitForFences(device.device, MAX_FRAMES_IN_FLIGHT, vk_in_flight_fences.data(), VK_TRUE, UINT64_MAX);
+                vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
+                vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
+                vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
+                vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
+                chunk.vk_vertex_buffer = VK_NULL_HANDLE;
+                chunk.vk_index_buffer = VK_NULL_HANDLE;
+                chunk.vk_vertex_buffer_memory = VK_NULL_HANDLE;
+                chunk.vk_index_buffer_memory = VK_NULL_HANDLE;
+            }
+            bool can_be_kept = false;
             for (auto& c : world) {
-                if (c.left == &chunk) {
-                    c.left = nullptr;
-                }
-                if (c.right == &chunk) {
-                    c.right = nullptr;
-                }
-                if (c.front == &chunk) {
-                    c.front = nullptr;
-                }
-                if (c.back == &chunk) {
-                    c.back = nullptr;
+                if (c.left == &chunk || c.right == &chunk || c.front == &chunk || c.back == &chunk) {
+                    can_be_kept = true;
+                    break;
                 }
             }
-            if (&chunk != &world.back()) {
-                chunk = world.back();
+            if (can_be_kept) {
+                chunk.should_be_deleted = false;
+                chunk.is_rendered = false;
+            } else {
+                if (&chunk != &world.back()) {
+                    chunk = world.back();
+                }
+                world.pop_back();
             }
-            world.pop_back();
         }
         p++;
     }
@@ -838,6 +842,8 @@ void VkEngine::copy_buffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSiz
 
     VkBufferCopy copy_region = {};
     copy_region.size = size;
+    // copy_region.srcOffset = 0;
+    // copy_region.dstOffset = 0;
     //std::cout << "Copy region size: " << size << std::endl;
     vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copy_region);
 
@@ -1604,6 +1610,10 @@ void VkEngine::create_vertex_buffer_chunk(Chunk& chunk)
 
     // vkDestroyBuffer(device.device, staging_buffer, nullptr);
     // vkFreeMemory(device.device, staging_buffer_memory, nullptr);
+
+    if (chunk.vk_index_buffer != VK_NULL_HANDLE && chunk.vk_vertex_buffer != VK_NULL_HANDLE) {
+        chunk.is_rendered = true;
+    }
 }
 
 void VkEngine::create_index_buffer_chunk(Chunk& chunk)
@@ -1639,6 +1649,10 @@ void VkEngine::create_index_buffer_chunk(Chunk& chunk)
 
     // vkDestroyBuffer(device.device, staging_buffer, nullptr);
     // vkFreeMemory(device.device, staging_buffer_memory, nullptr);
+
+    if (chunk.vk_index_buffer != VK_NULL_HANDLE && chunk.vk_vertex_buffer != VK_NULL_HANDLE) {
+        chunk.is_rendered = true;
+    }
 }
 
 void VkEngine::free_buffers_chunk(Chunk& chunk)

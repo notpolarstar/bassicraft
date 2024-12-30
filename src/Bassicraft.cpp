@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
+#include <thread>
 
 #include <glm/glm.hpp>
 
@@ -153,13 +154,13 @@ void Bassicraft::init_textures()
 
 void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
 {
-    chunk.is_rendered = true;
-    if (chunk.vertices.size() > 0) {
-        chunk.vertices.clear();
-        chunk.indices.clear();
-    }
+    chunk.vertices.clear();
+    chunk.indices.clear();
 
     for (auto& c : world) {
+        if (c.should_be_deleted) {
+            continue;
+        }
         if (c.pos == chunk.pos + glm::vec2(1, 0)) {
             chunk.right = &c;
         } else if (c.pos == chunk.pos + glm::vec2(-1, 0)) {
@@ -245,7 +246,7 @@ void Bassicraft::unload_load_new_chunks()
 {
     glm::vec2 player_chunk = glm::vec2((int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
     for (auto& chunk : world) {
-        if (chunk.is_rendered && (chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) > render_distance * render_distance) {
+        if (chunk.is_rendered && (chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) >= render_distance * render_distance) {
             chunk.should_be_deleted = true;
         }
         if ((chunk.pos.x - player_chunk.x) * (chunk.pos.x - player_chunk.x) + (chunk.pos.y - player_chunk.y) * (chunk.pos.y - player_chunk.y) < render_distance * render_distance) {

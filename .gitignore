@@ -38,3 +38,4 @@ img/bassirou256.jpg
 *.tmp
 imgui.ini
 bassicraft
+callgrind*

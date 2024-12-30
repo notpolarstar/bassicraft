@@ -22,10 +22,10 @@ private:
     FastNoiseLite noise;
     FastNoiseLite biome_noise;
 
-    int render_distance = 10;
+    int render_distance = 16;
     bool is_cursor_locked = true;
 
-    std::vector<Chunk> world;
+    std::vector<Chunk> world = {};
 
     MyTextureData crosshair;
 

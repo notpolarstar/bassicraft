@@ -14,16 +14,16 @@ class Chunk
 {
 private:
 public:
-    VkBuffer vk_vertex_buffer;
-    VkDeviceMemory vk_vertex_buffer_memory;
-    VkBuffer vk_index_buffer;
-    VkDeviceMemory vk_index_buffer_memory;
+    VkBuffer vk_vertex_buffer = VK_NULL_HANDLE;
+    VkDeviceMemory vk_vertex_buffer_memory = VK_NULL_HANDLE;
+    VkBuffer vk_index_buffer = VK_NULL_HANDLE;
+    VkDeviceMemory vk_index_buffer_memory = VK_NULL_HANDLE;
 
-    VkDeviceSize vertex_buffer_size;
-    VkDeviceSize index_buffer_size;
+    VkDeviceSize vertex_buffer_size = 0;
+    VkDeviceSize index_buffer_size = 0;
 
-    glm::vec2 pos;
-    std::array<std::array<std::array<Cube, 16>, 100>, 16> blocks{{glm::ivec3(0, 0, 0), 0}};
+    glm::vec2 pos{};
+    std::array<std::array<std::array<Cube, 16>, 100>, 16> blocks{};
 
     std::vector<Vertex> vertices{};
     std::vector<uint32_t> indices{};

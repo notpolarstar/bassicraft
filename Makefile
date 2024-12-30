@@ -23,7 +23,7 @@ OBJ	=	$(SRC:.cpp=.o)
 
 NAME	=	bassicraft
 
-CFLAGS	=	-W -Wall -Wextra -Ofast -std=c++20
+CFLAGS	=	-Ofast -std=c++20
 
 CPPFLAGS = 	-I./include -I./imgui -I./imgui/backends
 
@@ -36,7 +36,7 @@ all: $(NAME)
 $(NAME):	$(OBJ)	shaders
 		$(CC) -o $(NAME) $(OBJ) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
 
-debug:	CFLAGS += -g3 -fsanitize=address -fno-omit-frame-pointer
+debug:	CFLAGS += -g3 -fsanitize=address
 debug:	$(NAME)
 
 shaders:
