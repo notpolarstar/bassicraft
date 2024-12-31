@@ -48,12 +48,7 @@ Bassicraft::Bassicraft(/* args */)
         }
     }
 
-    std::cout << "engine created\n";
-    for (auto& chunk : world) {
-        set_blocks_in_vertex_buffer(chunk);
-        engine.create_vertex_buffer_chunk(chunk);
-        engine.create_index_buffer_chunk(chunk);
-    }
+    unload_load_new_chunks();
 
     glfwSetWindowUserPointer(engine.window, this);
     glfwSetMouseButtonCallback(engine.window, [](GLFWwindow* window, int button, int action, int mods) {
