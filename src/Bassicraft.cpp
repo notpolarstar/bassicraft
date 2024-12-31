@@ -40,6 +40,11 @@ Bassicraft::Bassicraft(/* args */)
     init_engine();
     init_textures();
 
+    // TODO :
+    // - Reserve the chunks based on render distance
+    // For now removing this will crash when trying to create new chunks after 1000 chunks
+    world.reserve(10000);
+
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
             // if (x * x + z * z < render_distance * render_distance) {
@@ -76,10 +81,10 @@ Bassicraft::Bassicraft(/* args */)
         ImGui::Begin("Debug", &open, ImGuiWindowFlags_AlwaysAutoResize);
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("Frame Time: %.1f ms", engine.frame_render_duration);
-        ImGui::Text("Chunks loaded: %d", world.size());
+        ImGui::Text("Chunks loaded: %lu", world.size());
         ImGui::Text("Player position: %.1f %.1f %.1f", player.camera.pos.x, player.camera.pos.y, player.camera.pos.z);
         ImGui::Text("Player chunk: %d %d", (int)player.camera.pos.x / 16, (int)player.camera.pos.z / 16);
-        ImGui::Text("Player chunk position: %.1f %.1f", regular_modulo(player.camera.pos.x, 16), regular_modulo(player.camera.pos.z, 16));
+        ImGui::Text("Player chunk position: %d %d", regular_modulo(player.camera.pos.x, 16), regular_modulo(player.camera.pos.z, 16));
         ImGui::Text("Player yaw: %.1f", player.camera.yaw);
         ImGui::Text("Player pitch: %.1f", player.camera.pitch);
         ImGui::Text("Player selected item: %d", player.selected_item);
@@ -286,6 +291,12 @@ void Bassicraft::key_callback(GLFWwindow* window, int key, int scancode, int act
     }
     if (key == GLFW_KEY_G && action == GLFW_PRESS) {
         player.ghost_mode = !player.ghost_mode;
+    }
+    if (key == GLFW_KEY_KP_ADD && action == GLFW_PRESS) {
+        render_distance++;
+    }
+    if (key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS) {
+        render_distance--;
     }
 }
 
