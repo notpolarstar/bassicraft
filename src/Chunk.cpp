@@ -11,32 +11,25 @@ Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : 
 
     uint16_t block_surface = (biome == 0) ? 19 : (biome == 9) ? 67 : 1;
     uint16_t block_under_surface = (biome == 0) ? 19 : (biome == 9) ? 67 : 3;
-    uint16_t water_type = (biome == 0) ?  : (biome == 9) ? 68 : 206;
+    uint16_t water_type = (biome == 9) ? 68 : 206;
 
     for (int x = 0; x < 16; x++)
     {
         for (int z = 0; z < 16; z++)
         {
-            int height = (int)(noise.GetNoise((float)(x + pos.x * 16), (float)(z + pos.y * 16)) * 10) + 10;
+            int height = noise.GetNoise(x + pos.x * 16, z + pos.y * 16) * 10 + 20;
+            height = (height < 0) ? 0 : (height > 99) ? 99 : height;
             // DEBUG for super flat world
             // int height = 15;
-            for (int y = 20; y > height - 1; y--)
+            blocks[x][height][z] = {glm::ivec3(x, height, z), block_surface};
+            for (int y = height + 2; y > height; y--)
             {
-                blocks[x][y][z] = {glm::ivec3(x, y, z), block_under_surface, 0};
+                blocks[x][y][z] = {glm::ivec3(x, y, z), block_under_surface};
             }
-            blocks[x][height][z] = {glm::ivec3(x, height, z), block_surface, 0};
-            // if (height >= 16) {
-            //     blocks[x][height][z] = {glm::ivec3(x, height, z), 19, 0};
-            // } else {
-            //     blocks[x][height][z] = {glm::ivec3(x, height, z), 1, 0};
-            // }
-            for (int y = height - 1; y > 15; y--)
+            for (int y = height + 3; y < 100; y++)
             {
-                blocks[x][y][z] = {glm::ivec3(x, y, z), water_type, 0};
+                blocks[x][y][z] = {glm::ivec3(x, y, z), 2};
             }
-            // if (rand() % 100 == 5 && height <= 16) {
-            //     put_tree(glm::ivec3(x, height, z));
-            // }
         }
     }
 }

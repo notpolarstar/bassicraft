@@ -13,6 +13,7 @@
 #include "TextureDataStruct.hpp"
 #include "Particle.hpp"
 #include "InstanceData.hpp"
+#include "Constants.hpp"
 
 class VkEngine
 {
@@ -57,7 +58,7 @@ private:
     std::vector<VkBuffer> vk_chunks_index_buffers;
     std::vector<VkDeviceMemory> vk_chunks_index_buffers_memory;
 
-    VkDeviceSize staging_buffer_size = sizeof(Vertex) * 10000;
+    // VkDeviceSize staging_buffer_size = sizeof(Vertex) * 10000;
     VkBuffer staging_buffer;
     VkDeviceMemory staging_buffer_memory;
     void* staging_buffer_data;
@@ -97,7 +98,7 @@ private:
     VkDeviceMemory vk_depth_image_memory;
     VkImageView vk_depth_image_view;
 
-    const int MAX_FRAMES_IN_FLIGHT = 2;
+    // const int MAX_FRAMES_IN_FLIGHT = 2;
 
 public:
     int width = 1920;
@@ -105,7 +106,7 @@ public:
     GLFWwindow *window;
     float frame_render_duration = 0.0f;
 
-    const int MAX_PARTICLES = 200;
+    // const int MAX_PARTICLES = 200;
 
     void create_swapchain();
     void create_render_pass();

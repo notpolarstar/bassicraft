@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 #include <glm/glm.hpp>
 
@@ -232,7 +233,7 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                             back = chunk.back->blocks[x][y][0].type;
                         }
                     }
-                    if (up || down || left || right || front || back) {
+                    if (!up || !down || !left || !right || !front || !back) {
                         engine.add_cube_to_vertices(chunk.blocks[x][y][z], up, down, left, right, front, back, chunk.pos, chunk);
                     }
                 }

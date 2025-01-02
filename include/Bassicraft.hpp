@@ -12,6 +12,7 @@
 #include "FastNoiseLite.hpp"
 #include "TextureDataStruct.hpp"
 #include "Inventory.hpp"
+#include "Constants.hpp"
 
 class Bassicraft
 {
