@@ -22,8 +22,10 @@ Bassicraft::Bassicraft(/* args */)
 {
     srand(time(NULL));
 
-    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-    noise.SetSeed(rand());
+    int seed = rand();
+
+    noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2S);
+    noise.SetSeed(seed);
     noise.SetFrequency(0.01f);
     noise.SetFractalType(FastNoiseLite::FractalType_FBm);
     noise.SetFractalOctaves(3);
@@ -31,7 +33,7 @@ Bassicraft::Bassicraft(/* args */)
     noise.SetFractalGain(0.5f);
 
     biome_noise.SetNoiseType(FastNoiseLite::NoiseType_OpenSimplex2);
-    biome_noise.SetSeed(rand());
+    biome_noise.SetSeed(seed);
     biome_noise.SetFrequency(0.02f);
     biome_noise.SetFractalType(FastNoiseLite::FractalType_DomainWarpIndependent);
     biome_noise.SetFractalOctaves(3);
@@ -48,9 +50,9 @@ Bassicraft::Bassicraft(/* args */)
 
     for (int x = -render_distance; x < render_distance; x++) {
         for (int z = -render_distance; z < render_distance; z++) {
-            // if (x * x + z * z < render_distance * render_distance) {
+            if (x * x + z * z < render_distance * render_distance) {
                 world.emplace_back(glm::vec2(x, z), noise, biome_noise);
-            // }
+            }
         }
     }
 
@@ -250,6 +252,24 @@ void Bassicraft::unload_load_new_chunks()
         if ((world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) > (render_distance + 1) * (render_distance + 1)) {
             world[i].should_be_deleted = true;
         } else if ((world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) < render_distance * render_distance) {
+            if (world[i].is_rendered) {
+                if (!world[i].right) {
+                    world.emplace_back(world[i].pos + glm::vec2(1, 0), noise, biome_noise);
+                    world[i].right = &world.back();
+                }
+                if (!world[i].left) {
+                    world.emplace_back(world[i].pos + glm::vec2(-1, 0), noise, biome_noise);
+                    world[i].left = &world.back();
+                }
+                if (!world[i].back) {
+                    world.emplace_back(world[i].pos + glm::vec2(0, 1), noise, biome_noise);
+                    world[i].back = &world.back();
+                }
+                if (!world[i].front) {
+                    world.emplace_back(world[i].pos + glm::vec2(0, -1), noise, biome_noise);
+                    world[i].front = &world.back();
+                }
+            }
             if (!world[i].is_rendered && !world[i].should_be_deleted) {
                 set_blocks_in_vertex_buffer(world[i]);
                 engine.create_vertex_buffer_chunk(world[i]);

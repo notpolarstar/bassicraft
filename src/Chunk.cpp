@@ -17,7 +17,7 @@ Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : 
     {
         for (int z = 0; z < 16; z++)
         {
-            int height = noise.GetNoise(x + pos.x * 16, z + pos.y * 16) * 10 + 20;
+            int height = noise.GetNoise(x + pos.x * 16, z + pos.y * 16) * 10 + 40;
             height = (height < 0) ? 0 : (height > 99) ? 99 : height;
             // DEBUG for super flat world
             // int height = 15;
@@ -30,6 +30,7 @@ Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : 
             {
                 blocks[x][y][z] = {glm::ivec3(x, y, z), 2};
             }
+            blocks[x][99][z] = {glm::ivec3(x, 99, z), 18};
         }
     }
 }
