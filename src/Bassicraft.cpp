@@ -556,7 +556,16 @@ void Bassicraft::move_player()
         player.velocity.z += glm::normalize(glm::cross(player.camera.front, player.camera.up)).z * player.camera.speed;
     }
     
+
     if (!player.ghost_mode) {
+        if (player.camera.pos.y < 0 || player.camera.pos.y > 99) {
+            player.velocity.y += 0.02f;
+            player.velocity.y *= 1.5f;
+            player.is_jumping = true;
+            player.camera.pos += player.velocity;
+            player.velocity *= 0.6f;
+            return;
+        }
         if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0)) && player.velocity.y == 0) {
             player.velocity += player.camera.up * 0.5f;
             player.is_jumping = true;

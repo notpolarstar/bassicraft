@@ -17,7 +17,8 @@ Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : 
     {
         for (int z = 0; z < 16; z++)
         {
-            int height = noise.GetNoise(x + pos.x * 16, z + pos.y * 16) * 10 + 40;
+            //int height = noise.GetNoise(x + pos.x * 16, z + pos.y * 16) * 10 + 40;
+            int height = pow(2, noise.GetNoise(x + pos.x * 16, z + pos.y * 16) + 5);
             height = (height < 0) ? 0 : (height > 99) ? 99 : height;
             // DEBUG for super flat world
             // int height = 15;
