@@ -258,12 +258,10 @@ void Bassicraft::unload_load_new_chunks()
         }
         if (chunk.is_rendered && in_radius > (render_distance + 1) * (render_distance + 1)) {
             chunk.is_rendered = false;
-        } else if (in_radius < render_distance * render_distance) {
-            if (!chunk.is_rendered && !chunk.should_be_deleted) {
-                set_blocks_in_vertex_buffer(chunk);
-                engine.create_vertex_buffer_chunk(chunk);
-                engine.create_index_buffer_chunk(chunk);
-            }
+        } else if (in_radius < render_distance * render_distance && !chunk.is_rendered && !chunk.should_be_deleted) {
+            set_blocks_in_vertex_buffer(chunk);
+            engine.create_vertex_buffer_chunk(chunk);
+            engine.create_index_buffer_chunk(chunk);
         }
     }
 }

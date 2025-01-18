@@ -700,17 +700,6 @@ void VkEngine::draw_frame(Player& player, std::vector<Chunk>& world)
 
     int p = 0;
     for (auto& chunk : world) {
-        if (!chunk.is_rendered && chunk.vk_index_buffer != VK_NULL_HANDLE && chunk.vk_vertex_buffer != VK_NULL_HANDLE) {
-            vkWaitForFences(device.device, MAX_FRAMES_IN_FLIGHT, vk_in_flight_fences.data(), VK_TRUE, UINT64_MAX);
-            vkDestroyBuffer(device.device, chunk.vk_vertex_buffer, nullptr);
-            vkFreeMemory(device.device, chunk.vk_vertex_buffer_memory, nullptr);
-            vkDestroyBuffer(device.device, chunk.vk_index_buffer, nullptr);
-            vkFreeMemory(device.device, chunk.vk_index_buffer_memory, nullptr);
-            chunk.vk_vertex_buffer = VK_NULL_HANDLE;
-            chunk.vk_index_buffer = VK_NULL_HANDLE;
-            chunk.vk_vertex_buffer_memory = VK_NULL_HANDLE;
-            chunk.vk_index_buffer_memory = VK_NULL_HANDLE;
-        }
         if (chunk.should_be_deleted && p < world.size() - 1) {
             if (chunk.vk_vertex_buffer != VK_NULL_HANDLE && chunk.vk_index_buffer != VK_NULL_HANDLE) {
                 vkWaitForFences(device.device, MAX_FRAMES_IN_FLIGHT, vk_in_flight_fences.data(), VK_TRUE, UINT64_MAX);

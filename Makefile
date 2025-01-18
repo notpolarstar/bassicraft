@@ -27,7 +27,7 @@ CFLAGS	=	-Ofast -std=c++20
 
 CPPFLAGS = 	-I./include -I./imgui -I./imgui/backends
 
-LDFLAGS =	-lglfw -lvulkan -ldl -lpthread -lXxf86vm -lXrandr -lXi
+LDFLAGS =	-lglfw -lvulkan -ldl -lpthread -lXrandr -lXi
 
 CC	=	g++
 
