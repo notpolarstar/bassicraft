@@ -249,10 +249,10 @@ void Bassicraft::unload_load_new_chunks()
     glm::ivec2 player_chunk = glm::ivec2(round(player.camera.pos.x / 16), round(player.camera.pos.z / 16));
     int len_chunks = world.size();
     for (int i = 0; i < len_chunks; i++) {
-        if ((world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) > (render_distance + 1) * (render_distance + 1)) {
+        if (world[i].is_rendered && (world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) > (render_distance + 1) * (render_distance + 1)) {
             world[i].should_be_deleted = true;
         } else if ((world[i].pos.x - player_chunk.x) * (world[i].pos.x - player_chunk.x) + (world[i].pos.y - player_chunk.y) * (world[i].pos.y - player_chunk.y) < render_distance * render_distance) {
-            if (world[i].is_rendered) {
+            if (0 && world[i].is_rendered) {
                 if (!world[i].right) {
                     world.emplace_back(world[i].pos + glm::vec2(1, 0), noise, biome_noise);
                     world[i].right = &world.back();
@@ -270,6 +270,7 @@ void Bassicraft::unload_load_new_chunks()
                     world[i].front = &world.back();
                 }
             }
+            
             if (!world[i].is_rendered && !world[i].should_be_deleted) {
                 set_blocks_in_vertex_buffer(world[i]);
                 engine.create_vertex_buffer_chunk(world[i]);
@@ -558,7 +559,7 @@ void Bassicraft::move_player()
     
 
     if (!player.ghost_mode) {
-        if (player.camera.pos.y < 0 || player.camera.pos.y > 99) {
+        if (player.camera.pos.y < 0 || player.camera.pos.y > 100) {
             player.velocity.y += 0.02f;
             player.velocity.y *= 1.5f;
             player.is_jumping = true;

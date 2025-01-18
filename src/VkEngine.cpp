@@ -246,7 +246,7 @@ void VkEngine::create_graphics_pipeline_particles(VkPipeline& pipeline, VkPipeli
     // auto binding_description = Vertex::get_binding_description();
     // auto attribute_descriptions = Vertex::get_attribute_descriptions();
     std::array<VkVertexInputBindingDescription, 2> binding_descriptions = {Vertex::get_binding_description(), ParticleInstanceData::get_binding_description()};
-    std::array<VkVertexInputAttributeDescription, 5> attribute_descriptions = {Vertex::get_attribute_descriptions()[0], Vertex::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[0], ParticleInstanceData::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[2]};
+    std::array<VkVertexInputAttributeDescription, 6> attribute_descriptions = {Vertex::get_attribute_descriptions()[0], Vertex::get_attribute_descriptions()[1], Vertex::get_attribute_descriptions()[2], ParticleInstanceData::get_attribute_descriptions()[0], ParticleInstanceData::get_attribute_descriptions()[1], ParticleInstanceData::get_attribute_descriptions()[2]};
 
     VkPipelineVertexInputStateCreateInfo vertex_input_info = {};
     vertex_input_info.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1236,7 +1236,7 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //up good
     if (up == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}, 11});
         chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
         chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
         chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0], texture_coords[i][1] + offset}});

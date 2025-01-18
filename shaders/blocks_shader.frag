@@ -4,6 +4,7 @@ layout(binding = 1) uniform sampler2D texSampler;
 
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec3 position;
+layout(location = 2) in float fragLight;
 
 layout(location = 0) out vec4 outColor;
 
@@ -12,12 +13,17 @@ void main() {
         discard;
     }
 
-    // vec4 fog_color = vec4(0.1, 0.25, 1.0, 1.0f);
-    // float dist = length(position.xyz);
-    // float fog_factor = smoothstep(60.0, 100.0, dist);
-    // fog_factor = clamp(fog_factor, 0.0, 1.0);
-    
-    //outColor = mix(vec4(fragColor, 1.0) * texture(texSampler, fragTexCoord), fog_color, fog_factor);
-
     outColor = texture(texSampler, fragTexCoord);
+
+    // Apply fog
+
+    float fogStart = 100.0;
+    float fogEnd = 120.0;
+    float fogFactor = -(fogEnd - position.z) / (fogEnd - fogStart);
+    fogFactor = clamp(fogFactor, 0.0, 1.0);
+    outColor.rgb = mix(outColor.rgb, vec3(0.5, 0.5, 0.5), fogFactor);
+
+    // Apply lighting
+    float light = float(fragLight) / 15.0;
+    outColor.rgb *= light;
 }
