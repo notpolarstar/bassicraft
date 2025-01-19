@@ -209,31 +209,23 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                     }
                     if (x > 0) {
                         left = chunk.blocks[x - 1][y][z].type;
-                    } else {
-                        if (chunk.left && !chunk.left->should_be_deleted) {
+                    } else if (chunk.left && !chunk.left->should_be_deleted) {
                             left = chunk.left->blocks[15][y][z].type;
-                        }
                     }
                     if (x < 15) {
                         right = chunk.blocks[x + 1][y][z].type;
-                    } else {
-                        if (chunk.right && !chunk.right->should_be_deleted) {
+                    } else if (chunk.right && !chunk.right->should_be_deleted) {
                             right = chunk.right->blocks[0][y][z].type;
-                        }
                     }
                     if (z > 0) {
                         front = chunk.blocks[x][y][z - 1].type;
-                    } else {
-                        if (chunk.front && !chunk.front->should_be_deleted) {
+                    } else if (chunk.front && !chunk.front->should_be_deleted) {
                             front = chunk.front->blocks[x][y][15].type;
-                        }
                     }
                     if (z < 15) {
                         back = chunk.blocks[x][y][z + 1].type;
-                    } else {
-                        if (chunk.back && !chunk.back->should_be_deleted) {
+                    } else if (chunk.back && !chunk.back->should_be_deleted) {
                             back = chunk.back->blocks[x][y][0].type;
-                        }
                     }
                     if (!up || !down || !left || !right || !front || !back) {
                         engine.add_cube_to_vertices(chunk.blocks[x][y][z], up, down, left, right, front, back, chunk.pos, chunk);
@@ -241,6 +233,40 @@ void Bassicraft::set_blocks_in_vertex_buffer(Chunk& chunk)
                 }
             }
         }
+    }
+    ambient_occlusion(chunk);
+}
+
+void Bassicraft::ambient_occlusion(Chunk& chunk)
+{
+    for (int i = 0; i < chunk.vertices.size(); i += 1) {
+        glm::ivec3 vertex_pos = chunk.vertices[i].pos;
+        vertex_pos.x -= chunk.pos.x * 16;
+        vertex_pos.z -= chunk.pos.y * 16;
+        int occlusion = 15;
+
+        if (vertex_pos.x < 15 && vertex_pos.y > 0 && chunk.blocks[vertex_pos.x + 1][vertex_pos.y - 1][vertex_pos.z].type != 0) {
+            occlusion -= 3;
+        } else if (vertex_pos.x < 15 && vertex_pos.y > 0 && chunk.right && chunk.right->blocks[0][vertex_pos.y - 1][vertex_pos.z].type != 0) {
+            // occlusion -= 2;
+        }
+        if (vertex_pos.x > 0 && vertex_pos.y > 0 && chunk.blocks[vertex_pos.x - 1][vertex_pos.y - 1][vertex_pos.z].type != 0) {
+            occlusion -= 3;
+        } else if (vertex_pos.x > 0 && vertex_pos.y > 0 && chunk.left && chunk.left->blocks[15][vertex_pos.y - 1][vertex_pos.z].type != 0) {
+            // occlusion -= 2;
+        }
+        if (vertex_pos.z < 15 && vertex_pos.y > 0 && chunk.blocks[vertex_pos.x][vertex_pos.y - 1][vertex_pos.z + 1].type != 0) {
+            occlusion -= 3;
+        } else if (vertex_pos.z < 15 && vertex_pos.y > 0 && chunk.back && chunk.back->blocks[vertex_pos.x][vertex_pos.y - 1][0].type != 0) {
+            // occlusion -= 2;
+        }
+        if (vertex_pos.z > 0 && vertex_pos.y > 0 && chunk.blocks[vertex_pos.x][vertex_pos.y - 1][vertex_pos.z - 1].type != 0) {
+            occlusion -= 3;
+        } else if (vertex_pos.z > 0 && vertex_pos.y > 0 && chunk.front && chunk.front->blocks[vertex_pos.x][vertex_pos.y - 1][15].type != 0) {
+            // occlusion -= 2;
+        }
+
+        chunk.vertices[i].light = occlusion;
     }
 }
 
@@ -306,7 +332,7 @@ void Bassicraft::key_callback(GLFWwindow* window, int key, int scancode, int act
     if (key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS) {
         render_distance--;
     }
-    if (key == GLFW_KEY_LEFT_CONTROL) {
+    if (key == GLFW_KEY_LEFT_CONTROL && action == GLFW_PRESS) {
         player.velocity *= 2.0f;
     }
 }
@@ -556,8 +582,9 @@ void Bassicraft::move_player()
             player.velocity *= 0.6f;
             return;
         }
+
         if (glfwGetKey(engine.window, GLFW_KEY_SPACE) == GLFW_PRESS && chunk_collision(player.camera.pos + glm::vec3(0, 2, 0)) && player.velocity.y == 0) {
-            player.velocity += player.camera.up * 0.5f;
+            player.velocity += glm::vec3(0, -0.4, 0);
             player.is_jumping = true;
         }
         if (chunk_collision(player.camera.pos +  glm::vec3(0, 2, 0)) && player.velocity.y > 0) {
@@ -566,7 +593,7 @@ void Bassicraft::move_player()
         }
         if (!chunk_collision(player.camera.pos + glm::vec3(0, 1.8, 0))) {
             player.velocity.y += 0.02f;
-            player.velocity.y *= 1.5f;
+            player.velocity.y *= 1.35f;
             player.is_jumping = true;
         }
         if (chunk_collision(player.camera.pos + glm::vec3(0, -0.2, 0)) && player.velocity.y < 0) {
@@ -588,32 +615,75 @@ void Bassicraft::move_player()
         player.velocity *= 1.3f;
     }
     player.camera.pos += player.velocity;
-    player.velocity *= 0.6f;
+    player.velocity = glm::vec3(player.velocity.x * 0.6, player.velocity.y * 0.7, player.velocity.z * 0.6);
 
     //player.camera.pos = glm::vec3(player.camera.pos.x - offset, player.camera.pos.y, player.camera.pos.z - offset);
 }
 
 bool Bassicraft::chunk_collision(glm::vec3 pos)
 {
-    glm::vec2 chunk_pos = glm::vec2((int)pos.x / 16, (int)pos.z / 16);
-    glm::ivec3 block_pos = glm::ivec3(regular_modulo(floor(pos.x), 16), floor(pos.y), regular_modulo(floor(pos.z), 16));
+    glm::vec2 chunk_pos_1 = glm::ivec2((int)(pos.x + 0.2) / 16, (int)(pos.z + 0.2) / 16);
+    glm::vec2 chunk_pos_2 = glm::ivec2((int)(pos.x - 0.2) / 16, (int)(pos.z + 0.2) / 16);
+    glm::vec2 chunk_pos_3 = glm::ivec2((int)(pos.x + 0.2) / 16, (int)(pos.z - 0.2) / 16);
+    glm::vec2 chunk_pos_4 = glm::ivec2((int)(pos.x - 0.2) / 16, (int)(pos.z - 0.2) / 16);
 
-    if (pos.x < 0) {
-        chunk_pos.x--;
+    glm::ivec3 block_pos_1 = glm::ivec3(regular_modulo(floor(pos.x + 0.2), 16), floor(pos.y), regular_modulo(floor(pos.z + 0.2), 16));
+    glm::ivec3 block_pos_2 = glm::ivec3(regular_modulo(floor(pos.x - 0.2), 16), floor(pos.y), regular_modulo(floor(pos.z + 0.2), 16));
+    glm::ivec3 block_pos_3 = glm::ivec3(regular_modulo(floor(pos.x + 0.2), 16), floor(pos.y), regular_modulo(floor(pos.z - 0.2), 16));
+    glm::ivec3 block_pos_4 = glm::ivec3(regular_modulo(floor(pos.x - 0.2), 16), floor(pos.y), regular_modulo(floor(pos.z - 0.2), 16));
+
+    int if_collision = 0;
+
+    if (pos.x + 0.2 < 0) {
+        chunk_pos_1.x--;
     }
-    if (pos.z < 0) {
-        chunk_pos.y--;
+    if (pos.z + 0.2 < 0) {
+        chunk_pos_1.y--;
+    }
+    if (pos.x - 0.2 < 0) {
+        chunk_pos_2.x--;
+    }
+    if (pos.z + 0.2 < 0) {
+        chunk_pos_2.y--;
+    }
+    if (pos.x + 0.2 < 0) {
+        chunk_pos_3.x--;
+    }
+    if (pos.z - 0.2 < 0) {
+        chunk_pos_3.y--;
+    }
+    if (pos.x - 0.2 < 0) {
+        chunk_pos_4.x--;
+    }
+    if (pos.z - 0.2 < 0) {
+        chunk_pos_4.y--;
     }
     for (auto& chunk : world) {
-        if (chunk.pos == chunk_pos) {
-            if (chunk.blocks[block_pos.x][block_pos.y][block_pos.z].type != 0) {
-                return true;
-            } else {
-                return false;
+        if (chunk.pos == chunk_pos_1) {
+            if (chunk.blocks[block_pos_1.x][block_pos_1.y][block_pos_1.z].type != 0) {
+                if_collision++;
+            }
+        }
+        if (chunk.pos == chunk_pos_2) {
+            if (chunk.blocks[block_pos_2.x][block_pos_2.y][block_pos_2.z].type != 0) {
+                if_collision++;
+            }
+        }
+        if (chunk.pos == chunk_pos_3) {
+            if (chunk.blocks[block_pos_3.x][block_pos_3.y][block_pos_3.z].type != 0) {
+                if_collision++;
+            }
+        }
+        if (chunk.pos == chunk_pos_4) {
+            if (chunk.blocks[block_pos_4.x][block_pos_4.y][block_pos_4.z].type != 0) {
+                if_collision++;
             }
         }
     }
-    return true;
+    if (if_collision > 0) {
+        return true;
+    }
+    return false;
 }
 
 Bassicraft::~Bassicraft()

@@ -1167,17 +1167,7 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     cube.pos.x += chunk_pos.x * 16;
     cube.pos.z += chunk_pos.y * 16;
 
-    // std::vector<glm::vec3> colors = {
-    //     {1.0f, 1.0f, 1.0f},
-    //     {1.0f, 1.0f, 1.0f},
-    //     {1.0f, 1.0f, 1.0f},
-    //     {1.0f, 1.0f, 1.0f},
-    //     {1.0f, 1.0f, 1.0f},
-    //     {1.0f, 1.0f, 1.0f}
-    // };
-
     if (cube.type == 1) {
-        // colors[2] = {0.3f, 0.9f, 0.1f};
         texture_coords[0] = {fmodf((4 - 1), 16.0f) / 16.0f, floor((4 - 1) / 16.0f) / 16.0f};
         texture_coords[1] = {fmodf((4 - 1), 16.0f) / 16.0f, floor((4 - 1) / 16.0f) / 16.0f};
         //texture_coords[2] = {fmodf((4 - 1), 16.0f) / 16.0f, floor((4 - 1) / 16.0f) / 16.0f};
@@ -1189,14 +1179,6 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
         texture_coords[2] = {fmodf((22 - 1), 16.0f) / 16.0f, floor((22 - 1) / 16.0f) / 16.0f};
         texture_coords[3] = {fmodf((22 - 1), 16.0f) / 16.0f, floor((22 - 1) / 16.0f) / 16.0f};
     }
-    // if (cube.type == 53 || cube.type == 54) {
-    //     colors[0] = {0.25f, 0.95f, 0.05f};
-    //     colors[1] = {0.25f, 0.95f, 0.05f};
-    //     colors[2] = {0.25f, 0.95f, 0.05f};
-    //     colors[3] = {0.25f, 0.95f, 0.05f};
-    //     colors[4] = {0.25f, 0.95f, 0.05f};
-    //     colors[5] = {0.25f, 0.95f, 0.05f};
-    // }
 
     int i = 0;
 
@@ -1236,7 +1218,7 @@ void VkEngine::add_cube_to_vertices(Cube& cube, int up, int down, int left, int 
     i++;
     //up good
     if (up == 0) {
-        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}, 11});
+        chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z}, {texture_coords[i][0], texture_coords[i][1]}});
         chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z}, {texture_coords[i][0] + offset, texture_coords[i][1]}});
         chunk.vertices.push_back({{cube.pos.x + 1.0f, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0] + offset, texture_coords[i][1] + offset}});
         chunk.vertices.push_back({{cube.pos.x, cube.pos.y, cube.pos.z + 1.0f}, {texture_coords[i][0], texture_coords[i][1] + offset}});

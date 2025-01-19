@@ -10,6 +10,7 @@ Chunk::Chunk(glm::vec2 pos, FastNoiseLite& noise, FastNoiseLite& biome_noise) : 
     int biome = (int)abs(biome_noise.GetNoise(pos.x, pos.y) * 10);
 
     uint16_t block_surface = (biome == 0) ? 19 : (biome == 9) ? 67 : 1;
+    // uint16_t block_surface = abs(pos.y + pos.x);
     uint16_t block_under_surface = (biome == 0) ? 19 : (biome == 9) ? 67 : 3;
     uint16_t water_type = (biome == 9) ? 68 : 206;
 

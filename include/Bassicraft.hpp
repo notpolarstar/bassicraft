@@ -56,4 +56,5 @@ public:
     void display_inventory();
     void move_player();
     bool chunk_collision(glm::vec3 pos);
+    void ambient_occlusion(Chunk& chunk);
 };
